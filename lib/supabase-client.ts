@@ -10,12 +10,12 @@ if (!supabaseUrl || !supabaseAnonKey) {
   ]
     .filter(Boolean)
     .join(' and ');
-  console.error(
-    `[Setu Sahayata] Configuration error: ${missing} is missing or empty. Sign-in and data features will not work. Check your environment variables.`
+  throw new Error(
+    `[Setu Sahayata] Missing environment variable(s): ${missing}. Please set them in your .env file or hosting platform settings (Vercel/Netlify).`
   );
 }
 
-export const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseAnonKey || 'placeholder-anon-key', {
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
