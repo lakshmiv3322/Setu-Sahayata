@@ -4,6 +4,7 @@ import { Inter } from 'next/font/google';
 import { LanguageProvider } from '@/lib/language-context';
 import { AuthProvider } from '@/lib/auth-context';
 import { FloatingAssistant } from '@/components/floating-assistant';
+import { PWAProvider } from '@/components/pwa-provider';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -45,8 +46,10 @@ export default function RootLayout({
       <body className={`${inter.variable} font-sans`}>
         <LanguageProvider>
           <AuthProvider>
-            {children}
-            <FloatingAssistant />
+            <PWAProvider>
+              {children}
+              <FloatingAssistant />
+            </PWAProvider>
           </AuthProvider>
         </LanguageProvider>
       </body>

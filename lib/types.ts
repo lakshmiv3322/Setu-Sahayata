@@ -1,10 +1,26 @@
-export type Language = 'en' | 'hi';
+export type Language = 'en' | 'hi' | 'ta' | 'te' | 'bn' | 'mr';
+
+export interface LanguageOption {
+  code: Language;
+  label: string;
+  nativeLabel: string;
+  bcp47: string; // BCP-47 language tag for Web Speech API
+}
+
+export const SUPPORTED_LANGUAGES: LanguageOption[] = [
+  { code: 'en', label: 'English', nativeLabel: 'English', bcp47: 'en-IN' },
+  { code: 'hi', label: 'Hindi', nativeLabel: 'हिंदी', bcp47: 'hi-IN' },
+  { code: 'ta', label: 'Tamil', nativeLabel: 'தமிழ்', bcp47: 'ta-IN' },
+  { code: 'te', label: 'Telugu', nativeLabel: 'తెలుగు', bcp47: 'te-IN' },
+  { code: 'bn', label: 'Bengali', nativeLabel: 'বাংলা', bcp47: 'bn-IN' },
+  { code: 'mr', label: 'Marathi', nativeLabel: 'मराठी', bcp47: 'mr-IN' },
+];
 
 export interface UserProfile {
   name: string;
-  nameHindi: string;
+  nameHindi?: string;
   age: number;
-  gender: 'Female' | 'Male';
+  gender: 'Female' | 'Male' | 'Other' | string;
   city: string;
   state: string;
   income: number;
@@ -14,6 +30,13 @@ export interface UserProfile {
   hasRationCard: boolean;
   hasUdyam: boolean;
   familySize: number;
+}
+
+export interface MatchExplanation {
+  passed: string[];
+  failed: string[];
+  passedHindi: string[];
+  failedHindi: string[];
 }
 
 export interface Scheme {
@@ -33,6 +56,7 @@ export interface Scheme {
   category: 'Finance' | 'Health' | 'Housing' | 'Food' | 'Education' | 'Women';
   icon: string;
   eligibilityTags: string[];
+  matchExplanation?: MatchExplanation;
 }
 
 export interface AssistanceCenter {

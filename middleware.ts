@@ -12,8 +12,19 @@ export async function middleware(req: NextRequest) {
 
   if (!isProtected) return NextResponse.next();
 
-  // Hackathon Demo Mode: Bypass Supabase auth cookie check
-  // so the judges can click through the demo without needing a real database.
+  // Supabase auth stores session tokens in cookies starting with sb- or containing auth-token
+  const allCookies = req.cookies.getAll();
+  const hasAuthCookie = allCookies.some(
+    (cookie) => cookie.name.startsWith('sb-') || cookie.name.includes('auth-token')
+  );
+
+  if (!hasAuthCookie) {
+    const loginUrl = req.nextUrl.clone();
+    loginUrl.pathname = '/login';
+    loginUrl.searchParams.set('next', pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
   return NextResponse.next();
 }
 

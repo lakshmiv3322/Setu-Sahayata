@@ -2,66 +2,102 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, X, Send, Sparkles, Bot } from 'lucide-react';
+import { MessageSquare, X, Send, Sparkles, Bot, AlertCircle, Mic, MicOff, Volume2 } from 'lucide-react';
+import { useLanguage } from '@/lib/language-context';
+import { useVoiceAssistant } from '@/hooks/use-voice-assistant';
 
 interface Message {
   role: 'user' | 'bot';
   text: string;
 }
 
-const FAQ: Record<string, string> = {
-  'pm svanidhi': 'PM SVANidhi gives street vendors a collateral-free working capital loan of ₹10,000. If you repay on time, you get 0% interest and can upgrade to ₹20,000 then ₹50,000!',
-  'svanidhi': 'PM SVANidhi gives street vendors a collateral-free loan up to ₹10,000. Repay on time → zero interest, and you unlock higher loan tiers!',
-  'mudra': 'PM Mudra Yojana gives small business loans up to ₹10 lakh under three tiers: Shishu (₹50K), Kishore (₹5L), and Tarun (₹10L). No collateral needed!',
-  'ayushman': 'Ayushman Bharat (PM-JAY) provides free health insurance of ₹5 lakh per family per year for secondary and tertiary hospital care.',
-  'pmay': 'PMAY gives an interest subsidy on home loans — from ₹1 lakh up to ₹2.67 lakh depending on your income category (EWS/LIG/MIG).',
-  'sukanya': 'Sukanya Samriddhi Yojana is a savings scheme for girl children under 10 years old, offering 8.2% interest — one of the highest in India.',
-  'anna yojana': 'Antyodaya Anna Yojana gives the poorest families 35 kg of subsidized food grains (rice ₹3/kg, wheat ₹2/kg) every month.',
-  'hello': 'Namaste! 🙏 I am Setu AI — your guide to government welfare schemes. Ask me about any scheme like PM SVANidhi, Mudra, Ayushman Bharat, or PMAY!',
-  'hi': 'Namaste! 🙏 Ask me anything about government schemes — I am here to help!',
-  'namaskar': 'Namaste! 🙏 Ask me anything about government welfare schemes!',
-  'namaste': 'Namaste! 🙏 I can help you understand schemes like PM SVANidhi, Mudra Yojana, Ayushman Bharat, and more!',
-  'aadhaar': 'Aadhaar is your 12-digit unique identity number. It is required for most government scheme applications. Make sure it is linked to your mobile number.',
-  'ration card': 'Ration Card is used to get subsidized food grains and also acts as a proof of residence. It is needed for schemes like Ayushman Bharat and Antyodaya Anna Yojana.',
-  'eligibility': 'Your eligibility depends on your income, social category (SC/ST/OBC/General), occupation, and documents. Go to the Discover page and upload your Aadhaar — we will match you instantly!',
-  'apply': 'Go to the Dashboard, find a scheme you qualify for, and click "Apply Now". We will auto-fill 90% of the form from your profile!',
-  'documents': 'The main documents you need are: Aadhaar Card, Ration Card, Bank Passbook, Passport-size photo, and sometimes an Udyam Certificate for business schemes.',
-  'what is setu sahayata': 'Setu Sahayata means "Bridge to Help". We connect citizens to the government welfare schemes they deserve — but never knew about. We simplify, translate, and guide you through the entire process.',
-  'how does it work': 'Simple! 1️⃣ Upload your Aadhaar or answer 3 questions. 2️⃣ We match you to schemes instantly. 3️⃣ Auto-fill and apply in one click!',
-};
-
-function getBotReply(input: string): string {
-  const lower = input.toLowerCase().trim();
-  for (const key of Object.keys(FAQ)) {
-    if (lower.includes(key)) return FAQ[key];
-  }
-  return `I am not sure about that specific query, but I can help with PM SVANidhi, Mudra Yojana, Ayushman Bharat, PMAY, Sukanya Samriddhi, and more. Try asking about any of these! 😊`;
-}
-
 export function FloatingAssistant() {
+  const { language, t } = useLanguage();
+  const { isListening, isSpeaking, startListening, stopListening, speak, stopSpeaking } = useVoiceAssistant();
+
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'bot', text: 'Namaste! 🙏 I am Setu AI. Ask me about any government welfare scheme — PM SVANidhi, Mudra, Ayushman Bharat, PMAY, and more!' },
+    {
+      role: 'bot',
+      text: t(
+        {
+          en: 'Namaste! 🙏 I am Setu AI. Ask me about any government welfare scheme — PM SVANidhi, Mudra, Ayushman Bharat, PMAY, and more!',
+          hi: 'नमस्ते! 🙏 मैं सेतु AI हूं। किसी भी सरकारी कल्याण योजना — पीएम स्वनिधि, मुद्रा, आयुष्मान भारत, पीएमएवाई और अन्य के बारे में पूछें!',
+          ta: 'வணக்கம்! 🙏 நான் சேது AI. அரசு நலத்திட்டங்கள் குறித்து கேட்கவும்!',
+          te: 'నమస్కారం! 🙏 నేను సేతు AI. ప్రభుత్వ సంక్షేమ పథకాల గురించి నన్ను అడగండి!',
+          bn: 'নমস্কার! 🙏 আমি সেতু AI। যে কোনো সরকারি কল্যাণ প্রকল্প সম্পর্কে জিজ্ঞাসা করুন!',
+          mr: 'नमस्कार! 🙏 मी सेतू AI आहे. कोणत्याही सरकारी योजनेबद्दल मला विचारा!',
+        }
+      ),
+    },
   ]);
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (open) bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, open]);
 
-  const sendMessage = async () => {
-    const text = input.trim();
-    if (!text) return;
+  // Handle ESC key to close assistant (A11y pass)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && open) setOpen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [open]);
+
+  const handleVoiceInput = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening((text) => {
+        if (text) {
+          setInput(text);
+        }
+      });
+    }
+  };
+
+  const sendMessage = async (overrideText?: string) => {
+    const text = (overrideText || input).trim();
+    if (!text || typing) return;
     setInput('');
-    setMessages((prev) => [...prev, { role: 'user', text }]);
+    setApiError(null);
+
+    const updatedMessages: Message[] = [...messages, { role: 'user', text }];
+    setMessages(updatedMessages);
     setTyping(true);
-    // Simulate "AI thinking" delay
-    await new Promise((r) => setTimeout(r, 600 + Math.random() * 400));
-    const reply = getBotReply(text);
-    setMessages((prev) => [...prev, { role: 'bot', text: reply }]);
-    setTyping(false);
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: updatedMessages.map((m) => ({ role: m.role === 'bot' ? 'model' : 'user', text: m.text })),
+          language,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        setApiError(data.error ?? 'Something went wrong. Please try again.');
+        const errorReply = t('Sorry, I am having trouble right now. Please try again.', 'माफ़ करें, मुझे अभी समस्या हो रही है। कृपया पुनः प्रयास करें।');
+        setMessages((prev) => [...prev, { role: 'bot', text: errorReply }]);
+      } else {
+        const reply = data.reply;
+        setMessages((prev) => [...prev, { role: 'bot', text: reply }]);
+      }
+    } catch {
+      setApiError('Network error — please check your connection.');
+      const netReply = t('Network error. Please check connection.', 'नेटवर्क समस्या। कनेक्शन जाँचें।');
+      setMessages((prev) => [...prev, { role: 'bot', text: netReply }]);
+    } finally {
+      setTyping(false);
+    }
   };
 
   return (
@@ -74,8 +110,8 @@ export function FloatingAssistant() {
         whileTap={{ scale: 0.95 }}
         animate={open ? {} : { y: [0, -6, 0] }}
         transition={open ? {} : { duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
-        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-trust-500 to-trust-700 shadow-2xl shadow-trust-500/40 text-white"
-        aria-label="Open Setu AI Assistant"
+        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-trust-500 to-trust-700 shadow-2xl shadow-trust-500/40 text-white focus-visible:ring-2 focus-visible:ring-trust-500 focus-visible:ring-offset-2"
+        aria-label={open ? 'Close Setu AI Assistant' : 'Open Setu AI Assistant'}
       >
         <AnimatePresence mode="wait">
           {open ? (
@@ -93,7 +129,7 @@ export function FloatingAssistant() {
       {/* Pulse ring */}
       {!open && (
         <motion.div
-          className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-trust-400/30"
+          className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-trust-400/30 pointer-events-none"
           animate={{ scale: [1, 1.6, 1], opacity: [0.6, 0, 0.6] }}
           transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
         />
@@ -103,11 +139,13 @@ export function FloatingAssistant() {
       <AnimatePresence>
         {open && (
           <motion.div
+            role="dialog"
+            aria-label="Setu AI Chat Assistant"
             initial={{ opacity: 0, scale: 0.85, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.85, y: 20 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-            className="fixed bottom-24 right-6 z-50 flex h-[480px] w-[340px] flex-col overflow-hidden rounded-3xl border border-trust-100 bg-white shadow-2xl shadow-trust-500/20"
+            className="fixed bottom-24 right-6 z-50 flex h-[520px] w-[340px] flex-col overflow-hidden rounded-3xl border border-trust-100 bg-white shadow-2xl shadow-trust-500/20"
           >
             {/* Header */}
             <div className="flex items-center gap-3 bg-gradient-to-r from-trust-600 to-trust-800 px-5 py-4">
@@ -116,10 +154,36 @@ export function FloatingAssistant() {
               </div>
               <div>
                 <p className="text-sm font-bold text-white">Setu AI</p>
-                <p className="text-xs text-trust-200">Ask about any government scheme</p>
+                <p className="text-xs text-trust-200">
+                  {t('Ask about any government scheme', 'किसी भी योजना के बारे में पूछें')}
+                </p>
               </div>
-              <div className="ml-auto flex h-2.5 w-2.5 rounded-full bg-emerald-400 shadow shadow-emerald-400/60" />
+              <div className="ml-auto flex items-center gap-2">
+                <button
+                  onClick={() => (isSpeaking ? stopSpeaking() : speak(messages[messages.length - 1]?.text || ''))}
+                  className="text-white/80 hover:text-white transition-colors"
+                  title={t('Read response aloud', 'उत्तर पढ़कर सुनाएं')}
+                >
+                  <Volume2 className={`h-4 w-4 ${isSpeaking ? 'text-emerald-300 animate-pulse' : ''}`} />
+                </button>
+                <div className="flex h-2.5 w-2.5 rounded-full bg-emerald-400 shadow shadow-emerald-400/60" />
+              </div>
             </div>
+
+            {/* API error banner */}
+            <AnimatePresence>
+              {apiError && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="flex items-center gap-2 bg-rose-50 px-4 py-2 text-xs text-rose-700"
+                >
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                  {apiError}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-trust-50/30 to-white">
@@ -166,7 +230,7 @@ export function FloatingAssistant() {
               <div ref={bottomRef} />
             </div>
 
-            {/* Input */}
+            {/* Input & Voice Controls */}
             <div className="border-t border-trust-100 bg-white p-3">
               <div className="flex gap-2">
                 <input
@@ -175,13 +239,33 @@ export function FloatingAssistant() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-                  placeholder="Ask about any scheme..."
-                  className="flex-1 rounded-xl border border-trust-200 bg-trust-50/50 px-3.5 py-2.5 text-sm text-trust-900 outline-none transition focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20 placeholder:text-muted-foreground"
+                  placeholder={isListening ? t('Listening...', 'सुन रहे हैं...') : t('Ask or tap mic...', 'पूछें या माइक दबाएं...')}
+                  disabled={typing}
+                  className={`flex-1 rounded-xl border px-3.5 py-2.5 text-sm outline-none transition focus:ring-2 placeholder:text-muted-foreground disabled:opacity-60 ${
+                    isListening
+                      ? 'border-emerald-500 bg-emerald-50/50 text-emerald-900 focus:ring-emerald-500/20'
+                      : 'border-trust-200 bg-trust-50/50 text-trust-900 focus:border-trust-500 focus:ring-trust-500/20'
+                  }`}
                 />
+
+                {/* Voice Input Mic Button */}
+                <button
+                  type="button"
+                  onClick={handleVoiceInput}
+                  title={isListening ? t('Stop Listening', 'सुनना बंद करें') : t('Voice Input', 'आवाज से पूछें')}
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition ${
+                    isListening
+                      ? 'bg-emerald-600 text-white animate-pulse shadow-md shadow-emerald-500/30'
+                      : 'bg-trust-100 text-trust-700 hover:bg-trust-200'
+                  }`}
+                >
+                  {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                </button>
+
                 <button
                   id="assistant-send-btn"
-                  onClick={sendMessage}
-                  disabled={!input.trim()}
+                  onClick={() => sendMessage()}
+                  disabled={!input.trim() || typing}
                   className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-trust-600 text-white shadow-md transition hover:bg-trust-700 disabled:opacity-40"
                   aria-label="Send message"
                 >
@@ -189,7 +273,7 @@ export function FloatingAssistant() {
                 </button>
               </div>
               <p className="mt-2 text-center text-[10px] text-muted-foreground">
-                Demo AI · Responses are pre-programmed for hackathon
+                Setu AI · Web Speech API Voice · Powered by Gemini
               </p>
             </div>
           </motion.div>

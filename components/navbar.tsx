@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Mic, Globe, Menu, X, LogOut, User as UserIcon } from 'lucide-react';
+import { Sparkles, Globe, Menu, X, LogOut, User as UserIcon, ShieldCheck, Check } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -17,12 +17,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useLanguage } from '@/lib/language-context';
 import { useAuth } from '@/lib/auth-context';
+import { SUPPORTED_LANGUAGES, type Language } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { t, toggle, isHindi } = useLanguage();
+  const { t, language, setLanguage } = useLanguage();
   const { user, signOut } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -34,6 +35,8 @@ export function Navbar() {
     { href: '/dashboard', label: t('Dashboard', 'डैशबोर्ड') },
     { href: '/de-jargonifier', label: t('De-Jargonifier', 'द-जैगनिफायर') },
   ];
+
+  const currentLang = SUPPORTED_LANGUAGES.find((l) => l.code === language) || SUPPORTED_LANGUAGES[0];
 
   const userDisplayName =
     (user?.user_metadata?.full_name as string) ||
@@ -103,23 +106,29 @@ export function Navbar() {
             </nav>
 
             <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={toggle}
-                className="hidden gap-1.5 sm:flex"
-              >
-                <Globe className="h-4 w-4" />
-                {isHindi ? 'EN' : 'हिं'}
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="hidden sm:flex"
-                title={t('Voice narration', 'वॉइस नैरेशन')}
-              >
-                <Mic className="h-4 w-4" />
-              </Button>
+              {/* 6-Language Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="gap-1.5 font-medium">
+                    <Globe className="h-4 w-4 text-trust-600" />
+                    <span>{currentLang.nativeLabel}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40">
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">Select Language</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {SUPPORTED_LANGUAGES.map((lang) => (
+                    <DropdownMenuItem
+                      key={lang.code}
+                      onClick={() => setLanguage(lang.code as Language)}
+                      className="flex items-center justify-between"
+                    >
+                      <span className="text-sm">{lang.nativeLabel} ({lang.label})</span>
+                      {language === lang.code && <Check className="h-4 w-4 text-emerald-600" />}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               {user ? (
                 <DropdownMenu>
@@ -144,6 +153,10 @@ export function Navbar() {
                     <DropdownMenuItem onClick={() => router.push('/dashboard')}>
                       <UserIcon className="mr-2 h-4 w-4" />
                       {t('Dashboard', 'डैशबोर्ड')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => router.push('/settings')}>
+                      <ShieldCheck className="mr-2 h-4 w-4 text-trust-600" />
+                      {t('Privacy & Data Settings', 'गोपनीयता और डेटा')}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
@@ -203,28 +216,26 @@ export function Navbar() {
                     {item.label}
                   </Link>
                 ))}
-                <div className="flex gap-2 pt-2">
-                  <Button variant="outline" size="sm" onClick={toggle} className="flex-1 gap-1.5">
-                    <Globe className="h-4 w-4" />
-                    {isHindi ? 'English' : 'हिंदी'}
-                  </Button>
-                  {user ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleSignOut}
-                      className="flex-1 gap-1.5"
+                {user && (
+                  <Link
+                    href="/settings"
+                    onClick={() => setMobileOpen(false)}
+                    className="rounded-lg px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted flex items-center gap-2"
+                  >
+                    <ShieldCheck className="h-4 w-4 text-trust-600" />
+                    {t('Privacy & Settings', 'गोपनीयता और सेटिंग्स')}
+                  </Link>
+                )}
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-trust-100">
+                  {SUPPORTED_LANGUAGES.map((lang) => (
+                    <button
+                      key={lang.code}
+                      onClick={() => { setLanguage(lang.code as Language); setMobileOpen(false); }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${language === lang.code ? 'bg-trust-600 text-white' : 'bg-trust-50 text-trust-700'}`}
                     >
-                      <LogOut className="h-4 w-4" />
-                      {t('Sign Out', 'साइन आउट')}
-                    </Button>
-                  ) : (
-                    <Link href="/login" onClick={() => setMobileOpen(false)} className="flex-1">
-                      <Button size="sm" className="w-full bg-trust-600 hover:bg-trust-700">
-                        {t('Sign In', 'साइन इन')}
-                      </Button>
-                    </Link>
-                  )}
+                      {lang.nativeLabel}
+                    </button>
+                  ))}
                 </div>
               </div>
             </motion.nav>

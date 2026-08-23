@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Store,
   Landmark,
@@ -17,10 +17,15 @@ import {
   Sparkles,
   TrendingUp,
   CheckCircle2,
+  XCircle,
   Search,
   Mic,
   Volume2,
   FileText,
+  ChevronDown,
+  ChevronUp,
+  AlertTriangle,
+  Bell,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -32,8 +37,10 @@ import { useAuth } from '@/lib/auth-context';
 import { useRequireAuth } from '@/lib/use-require-auth';
 import { mockSchemes, mockAssistanceCenters } from '@/lib/mock-data';
 import { supabase } from '@/lib/supabase-client';
-import { computeMatchPercent, rankSchemes, type StoredProfile } from '@/lib/match-schemes';
+import { rankSchemes, type StoredProfile } from '@/lib/match-schemes';
 import type { Scheme } from '@/lib/types';
+import { useVoiceAssistant } from '@/hooks/use-voice-assistant';
+import { evaluateLifeEventTriggers, type SchemeTriggerAlert } from '@/lib/life-events';
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Store,
@@ -66,12 +73,15 @@ interface ApplicationRow {
 export default function DashboardPage() {
   useRequireAuth();
   const { user } = useAuth();
-  const { t, isHindi, toggle } = useLanguage();
+  const { t, isHindi } = useLanguage();
+  const { isSpeaking, speak, stopSpeaking } = useVoiceAssistant();
+
   const [search, setSearch] = useState('');
   const [profile, setProfile] = useState<StoredProfile | null>(null);
   const [applications, setApplications] = useState<ApplicationRow[]>([]);
   const [schemes, setSchemes] = useState<Scheme[]>(mockSchemes);
-  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [triggerAlerts, setTriggerAlerts] = useState<SchemeTriggerAlert[]>([]);
+  const [expandedExplanation, setExpandedExplanation] = useState<Record<string, boolean>>({});
 
   const userDisplayName =
     (user?.user_metadata?.full_name as string) ||
@@ -80,23 +90,35 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!user) return;
-    // Hackathon Demo Mode: Read profile and applications from localStorage
-    const storedProfile = localStorage.getItem(`demo_profile_${user.id}`);
-    if (storedProfile) {
-      try {
-        setProfile(JSON.parse(storedProfile) as StoredProfile);
-      } catch {}
-    }
-    const storedApps = localStorage.getItem(`demo_applications_${user.id}`);
-    if (storedApps) {
-      try {
-        setApplications(JSON.parse(storedApps) as ApplicationRow[]);
-      } catch {}
-    }
+
+    const fetchUserData = async () => {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (profileData) {
+        setProfile(profileData as StoredProfile);
+      }
+
+      const { data: appsData } = await supabase
+        .from('applications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('submitted_at', { ascending: false });
+
+      if (appsData) {
+        setApplications(appsData as ApplicationRow[]);
+      }
+    };
+
+    fetchUserData();
   }, [user]);
 
   useEffect(() => {
     setSchemes(rankSchemes(mockSchemes, profile));
+    setTriggerAlerts(evaluateLifeEventTriggers(profile));
   }, [profile]);
 
   const filteredSchemes = schemes.filter((s) =>
@@ -109,17 +131,20 @@ export default function DashboardPage() {
     ? Math.round(schemes.reduce((sum, s) => sum + s.matchPercent, 0) / schemes.length)
     : 0;
 
+  const toggleExplanation = (schemeId: string) => {
+    setExpandedExplanation((prev) => ({
+      ...prev,
+      [schemeId]: !prev[schemeId],
+    }));
+  };
+
   const handleListen = useCallback(() => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) return;
-
-    window.speechSynthesis.cancel();
-
     if (isSpeaking) {
-      setIsSpeaking(false);
+      stopSpeaking();
       return;
     }
 
-    const topSchemes = filteredSchemes.slice(0, 6);
+    const topSchemes = filteredSchemes.slice(0, 5);
     if (topSchemes.length === 0) return;
 
     const text = isHindi
@@ -130,21 +155,8 @@ export default function DashboardPage() {
           .map((s) => `${s.name}. ${s.benefit}. Match ${s.matchPercent} percent.`)
           .join(' ');
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = isHindi ? 'hi-IN' : 'en-IN';
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-    setIsSpeaking(true);
-    window.speechSynthesis.speak(utterance);
-  }, [filteredSchemes, isHindi, isSpeaking]);
-
-  useEffect(() => {
-    return () => {
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
-    };
-  }, []);
+    speak(text);
+  }, [filteredSchemes, isHindi, isSpeaking, speak, stopSpeaking]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-trust-50 via-white to-saffron-50/20">
@@ -172,23 +184,72 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          {/* Global language + voice toggle */}
+          {/* Voice narration button */}
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={toggle} className="gap-1.5">
-              {isHindi ? 'English' : 'हिंदी'}
-            </Button>
             <Button
               variant="outline"
               size="sm"
-              className={`gap-1.5 ${isSpeaking ? 'bg-trust-50 text-trust-700' : ''}`}
+              className={`gap-1.5 ${isSpeaking ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : ''}`}
               onClick={handleListen}
               title={t('Read schemes aloud', 'योजनाएं पढ़कर सुनाएं')}
             >
-              <Mic className="h-4 w-4" />
+              <Mic className={`h-4 w-4 ${isSpeaking ? 'animate-pulse text-emerald-600' : ''}`} />
               {isSpeaking ? t('Stop', 'रोकें') : t('Listen', 'सुनें')}
             </Button>
           </div>
         </motion.div>
+
+        {/* Life Event & Deadline Proactive Alerts Banner */}
+        {triggerAlerts.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8 space-y-3"
+          >
+            <div className="flex items-center gap-2 text-sm font-bold text-trust-900">
+              <Bell className="h-4 w-4 text-saffron-600 animate-bounce" />
+              <span>{t('Personalized Milestone & Deadline Alerts', 'व्यक्तिगत मील के पत्थर और समय-सीमा चेतावनी')}</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {triggerAlerts.map((alert) => (
+                <Card
+                  key={alert.id}
+                  className={`p-4 border shadow-sm transition-all hover:shadow-md flex items-start justify-between gap-3 ${
+                    alert.badgeColor === 'emerald'
+                      ? 'border-emerald-200 bg-emerald-50/50'
+                      : alert.badgeColor === 'amber'
+                      ? 'border-amber-200 bg-amber-50/50'
+                      : alert.badgeColor === 'rose'
+                      ? 'border-rose-200 bg-rose-50/50'
+                      : 'border-trust-200 bg-trust-50/50'
+                  }`}
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm text-trust-900">
+                        {isHindi ? alert.schemeNameHindi : alert.schemeName}
+                      </span>
+                      {alert.daysRemaining !== undefined && (
+                        <Badge className="bg-rose-500 text-white text-[10px]">
+                          {alert.daysRemaining} {t('Days Left', 'दिन शेष')}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-trust-800">
+                      {isHindi ? alert.triggerReasonHindi : alert.triggerReason}
+                    </p>
+                  </div>
+                  <Link href="/apply">
+                    <Button size="sm" variant="outline" className="shrink-0 text-xs gap-1 border-trust-300">
+                      {t('Apply', 'आवेदन करें')}
+                      <ArrowRight className="h-3 w-3" />
+                    </Button>
+                  </Link>
+                </Card>
+              ))}
+            </div>
+          </motion.div>
+        )}
 
         {/* Top section: Eligibility Ring + Stats */}
         <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -315,7 +376,7 @@ export default function DashboardPage() {
             placeholder={t('Search schemes by name...', 'योजना नाम से खोजें...')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-12 rounded-2xl border-trust-100 bg-white pl-12 text-base shadow-sm"
+            className="h-12 rounded-2xl border-trust-100 bg-white pl-12 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-trust-500"
           />
         </motion.div>
 
@@ -324,6 +385,9 @@ export default function DashboardPage() {
           {filteredSchemes.map((scheme, i) => {
             const Icon = iconMap[scheme.icon] || Store;
             const gradient = categoryColors[scheme.category] || 'from-trust-500 to-trust-700';
+            const isExpanded = !!expandedExplanation[scheme.id];
+            const explanation = scheme.matchExplanation;
+
             return (
               <motion.div
                 key={scheme.id}
@@ -332,80 +396,120 @@ export default function DashboardPage() {
                 transition={{ delay: i * 0.08 }}
                 whileHover={{ y: -4 }}
               >
-                <Card className="group h-full overflow-hidden border-trust-100 bg-white shadow-lg transition-shadow hover:shadow-xl hover:shadow-trust-500/10">
-                  {/* Match bar */}
-                  <div className="relative h-1.5 w-full overflow-hidden bg-trust-50">
-                    <motion.div
-                      className={`h-full bg-gradient-to-r ${gradient}`}
-                      initial={{ width: 0 }}
-                      animate={{ width: `${scheme.matchPercent}%` }}
-                      transition={{ delay: 0.5 + i * 0.08, duration: 0.8, ease: 'easeOut' }}
-                    />
+                <Card className="group h-full overflow-hidden border-trust-100 bg-white shadow-lg transition-shadow hover:shadow-xl hover:shadow-trust-500/10 flex flex-col justify-between">
+                  <div>
+                    {/* Match bar */}
+                    <div className="relative h-1.5 w-full overflow-hidden bg-trust-50">
+                      <motion.div
+                        className={`h-full bg-gradient-to-r ${gradient}`}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${scheme.matchPercent}%` }}
+                        transition={{ delay: 0.5 + i * 0.08, duration: 0.8, ease: 'easeOut' }}
+                      />
+                    </div>
+
+                    <div className="p-6 pb-2">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-3">
+                          <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${gradient} shadow-md`}>
+                            <Icon className="h-6 w-6 text-white" />
+                          </div>
+                          <div>
+                            <h3 className="font-bold leading-tight text-trust-900">
+                              {isHindi ? scheme.nameHindi : scheme.name}
+                            </h3>
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              {isHindi ? scheme.ministryHindi : scheme.ministry}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-gradient-trust">
+                            {scheme.matchPercent}%
+                          </div>
+                          <div className="text-xs text-muted-foreground">{t('match', 'मिलान')}</div>
+                        </div>
+                      </div>
+
+                      <p className="mt-4 text-sm leading-relaxed text-muted-foreground line-clamp-2">
+                        {isHindi ? scheme.descriptionHindi : scheme.description}
+                      </p>
+
+                      {/* Benefit highlight */}
+                      <div className="mt-4 flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-3">
+                        <Sparkles className="h-4 w-4 shrink-0 text-emerald-600" />
+                        <span className="text-sm font-semibold text-emerald-800">
+                          {isHindi ? scheme.benefitHindi : scheme.benefit}
+                        </span>
+                      </div>
+
+                      {/* Tags + meta */}
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                        <Badge variant="secondary" className="bg-trust-50 text-trust-700">
+                          <Clock className="mr-1 h-3 w-3" />
+                          {isHindi ? scheme.timeToApplyHindi : scheme.timeToApply}
+                        </Badge>
+                        {scheme.eligibilityTags.map((tag, ti) => (
+                          <Badge key={ti} variant="outline" className="border-trust-200 text-trust-600">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+
+                      {/* Match Explanation Toggle */}
+                      {explanation && (explanation.passed.length > 0 || explanation.failed.length > 0) && (
+                        <div className="mt-4 border-t border-trust-100 pt-3">
+                          <button
+                            onClick={() => toggleExplanation(scheme.id)}
+                            className="flex items-center justify-between w-full text-xs font-semibold text-trust-700 hover:text-trust-900 transition-colors focus-visible:ring-2 focus-visible:ring-trust-500 rounded"
+                          >
+                            <span>{t('Why this match score?', 'यह स्कोर क्यों मिला?')}</span>
+                            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          </button>
+
+                          <AnimatePresence>
+                            {isExpanded && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="mt-3 space-y-2 overflow-hidden text-xs"
+                              >
+                                {(isHindi ? explanation.passedHindi : explanation.passed).map((item, idx) => (
+                                  <div key={`pass-${idx}`} className="flex items-center gap-2 text-emerald-700 bg-emerald-50/70 p-2 rounded-lg">
+                                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                                    <span>{item}</span>
+                                  </div>
+                                ))}
+
+                                {(isHindi ? explanation.failedHindi : explanation.failed).map((item, idx) => (
+                                  <div key={`fail-${idx}`} className="flex items-center gap-2 text-rose-700 bg-rose-50/70 p-2 rounded-lg">
+                                    <XCircle className="h-3.5 w-3.5 shrink-0 text-rose-600" />
+                                    <span>{item}</span>
+                                  </div>
+                                ))}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="p-6">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-start gap-3">
-                        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${gradient} shadow-md`}>
-                          <Icon className="h-6 w-6 text-white" />
-                        </div>
-                        <div>
-                          <h3 className="font-bold leading-tight text-trust-900">
-                            {isHindi ? scheme.nameHindi : scheme.name}
-                          </h3>
-                          <p className="mt-0.5 text-xs text-muted-foreground">
-                            {isHindi ? scheme.ministryHindi : scheme.ministry}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold text-gradient-trust">
-                          {scheme.matchPercent}%
-                        </div>
-                        <div className="text-xs text-muted-foreground">{t('match', 'मिलान')}</div>
-                      </div>
-                    </div>
-
-                    <p className="mt-4 text-sm leading-relaxed text-muted-foreground line-clamp-2">
-                      {isHindi ? scheme.descriptionHindi : scheme.description}
-                    </p>
-
-                    {/* Benefit highlight */}
-                    <div className="mt-4 flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-3">
-                      <Sparkles className="h-4 w-4 shrink-0 text-emerald-600" />
-                      <span className="text-sm font-semibold text-emerald-800">
-                        {isHindi ? scheme.benefitHindi : scheme.benefit}
-                      </span>
-                    </div>
-
-                    {/* Tags + meta */}
-                    <div className="mt-4 flex flex-wrap items-center gap-2">
-                      <Badge variant="secondary" className="bg-trust-50 text-trust-700">
-                        <Clock className="mr-1 h-3 w-3" />
-                        {isHindi ? scheme.timeToApplyHindi : scheme.timeToApply}
-                      </Badge>
-                      {scheme.eligibilityTags.map((tag, ti) => (
-                        <Badge key={ti} variant="outline" className="border-trust-200 text-trust-600">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-
-                    {/* Actions */}
-                    <div className="mt-5 flex gap-2">
-                      <Link href="/apply" className="flex-1">
-                        <Button className="w-full gap-1.5 bg-trust-600 hover:bg-trust-700">
-                          {t('Apply Now', 'आवेदन करें')}
-                          <ArrowRight className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                      <Link href="/de-jargonifier" className="flex-1">
-                        <Button variant="outline" className="w-full gap-1.5 border-trust-200">
-                          <Volume2 className="h-4 w-4" />
-                          {t('Explain', 'समझाएं')}
-                        </Button>
-                      </Link>
-                    </div>
+                  {/* Actions */}
+                  <div className="p-6 pt-3 flex gap-2">
+                    <Link href="/apply" className="flex-1">
+                      <Button className="w-full gap-1.5 bg-trust-600 hover:bg-trust-700 focus-visible:ring-2 focus-visible:ring-trust-500">
+                        {t('Apply Now', 'आवेदन करें')}
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                    <Link href="/de-jargonifier" className="flex-1">
+                      <Button variant="outline" className="w-full gap-1.5 border-trust-200 focus-visible:ring-2 focus-visible:ring-trust-500">
+                        <Volume2 className="h-4 w-4" />
+                        {t('Explain', 'समझाएं')}
+                      </Button>
+                    </Link>
                   </div>
                 </Card>
               </motion.div>

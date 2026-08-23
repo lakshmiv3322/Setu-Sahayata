@@ -21,38 +21,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Hackathon Demo Mode: Avoid hanging on Supabase network requests
-    const storedUser = localStorage.getItem('demo_user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        // Ignore parse error
-      }
-    }
-    setLoading(false);
+    // Initialise from existing session (cookie / localStorage managed by Supabase)
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setUser(data.session?.user ?? null);
+      setLoading(false);
+    });
+
+    // Keep state in sync with Supabase auth events
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const signUp = useCallback(async (email: string, password: string, name: string) => {
-    // Hackathon Demo Mode: Instant mock signup
-    const demoUser = { id: 'demo-user-123', email, user_metadata: { full_name: name } } as any;
-    localStorage.setItem('demo_user', JSON.stringify(demoUser));
-    setUser(demoUser);
-    return { error: null };
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: name } },
+    });
+    return { error: error?.message ?? null };
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    // Hackathon Demo Mode: Instant mock login
-    const demoUser = { id: 'demo-user-123', email, user_metadata: { full_name: email.split('@')[0] } } as any;
-    localStorage.setItem('demo_user', JSON.stringify(demoUser));
-    setUser(demoUser);
-    return { error: null };
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return { error: error?.message ?? null };
   }, []);
 
   const signOut = useCallback(async () => {
-    // Hackathon Demo Mode: Mock logout
-    localStorage.removeItem('demo_user');
-    setUser(null);
+    await supabase.auth.signOut();
   }, []);
 
   return (
