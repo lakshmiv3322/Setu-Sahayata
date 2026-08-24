@@ -21,12 +21,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Initialise from existing session (cookie / localStorage managed by Supabase)
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
-      setLoading(false);
-    });
+    // Initialise from existing session
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        setSession(data.session);
+        setUser(data.session?.user ?? null);
+      })
+      .catch((err) => {
+        console.warn('[AuthProvider] Session retrieval error:', err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
 
     // Keep state in sync with Supabase auth events
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
@@ -38,22 +45,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  const formatAuthError = (errMessage: string): string => {
+    if (errMessage.includes('Failed to fetch') || errMessage.includes('ENOTFOUND')) {
+      return 'Could not connect to Supabase database (Failed to fetch). Please check that NEXT_PUBLIC_SUPABASE_URL in your Vercel/Netlify environment variables points to an active Supabase project URL.';
+    }
+    return errMessage;
+  };
+
   const signUp = useCallback(async (email: string, password: string, name: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { full_name: name } },
-    });
-    return { error: error?.message ?? null };
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { full_name: name } },
+      });
+      if (error) {
+        return { error: formatAuthError(error.message) };
+      }
+      return { error: null };
+    } catch (err: any) {
+      return { error: formatAuthError(err?.message || 'Authentication request failed') };
+    }
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error?.message ?? null };
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        return { error: formatAuthError(error.message) };
+      }
+      return { error: null };
+    } catch (err: any) {
+      return { error: formatAuthError(err?.message || 'Sign in request failed') };
+    }
   }, []);
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.warn('[AuthProvider] Sign out error:', err);
+    }
   }, []);
 
   return (
