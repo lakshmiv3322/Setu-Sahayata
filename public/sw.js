@@ -2,10 +2,8 @@ const CACHE_NAME = 'setu-sahayata-v1';
 const STATIC_ASSETS = [
   '/',
   '/discover',
-  '/dashboard',
   '/de-jargonifier',
   '/manifest.json',
-  '/favicon.ico',
 ];
 
 // Install Event — Cache static assets
@@ -35,7 +33,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   // Skip non-GET or cross-origin requests
-  if (event.request.method !== 'GET' || !url.origin.includes(self.location.origin)) {
+  if (event.request.method !== 'GET' || url.origin !== self.location.origin) {
     return;
   }
 

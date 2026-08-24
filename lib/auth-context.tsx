@@ -46,8 +46,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const formatAuthError = (errMessage: string): string => {
-    if (errMessage.includes('Failed to fetch') || errMessage.includes('ENOTFOUND')) {
-      return 'Could not connect to Supabase database (Failed to fetch). Please check that NEXT_PUBLIC_SUPABASE_URL in your Vercel/Netlify environment variables points to an active Supabase project URL.';
+    if (
+      errMessage.includes('Failed to fetch') ||
+      errMessage.includes('ENOTFOUND') ||
+      errMessage.includes('ERR_NAME_NOT_RESOLVED') ||
+      errMessage.includes('NetworkError') ||
+      errMessage.includes('net::')
+    ) {
+      return 'Could not connect to the authentication server. Your Supabase project may be paused or the URL may be incorrect. Please check NEXT_PUBLIC_SUPABASE_URL in your .env file and ensure the project is active at supabase.com.';
+    }
+    if (errMessage.includes('Invalid login credentials')) {
+      return 'Incorrect email or password. Please try again.';
+    }
+    if (errMessage.includes('Email not confirmed')) {
+      return 'Please verify your email address before signing in. Check your inbox for a confirmation link.';
+    }
+    if (errMessage.includes('User already registered')) {
+      return 'An account with this email already exists. Please sign in instead.';
     }
     return errMessage;
   };

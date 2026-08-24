@@ -38,10 +38,11 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <meta name="theme-color" content="#2563eb" />
+        <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Setu Sahayata" />
-        <link rel="manifest" href="/manifest.json" />
+        {/* manifest injected automatically by Next.js metadata.manifest */}
       </head>
       <body className={`${inter.variable} font-sans`}>
         <LanguageProvider>
