@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
-import { supabase } from './supabase-client';
+import { supabaseBrowser as supabase } from './supabase-browser';
 
 interface AuthContextValue {
   user: User | null;
@@ -63,6 +63,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     if (errMessage.includes('User already registered')) {
       return 'An account with this email already exists. Please sign in instead.';
+    }
+    if (
+      errMessage.toLowerCase().includes('rate limit') ||
+      errMessage.toLowerCase().includes('rate_limit') ||
+      errMessage.toLowerCase().includes('too many requests')
+    ) {
+      return 'Supabase email rate limit exceeded. Please disable "Confirm email" in your Supabase Dashboard under Authentication -> Providers -> Email, or wait 1 hour to sign up again.';
     }
     return errMessage;
   };

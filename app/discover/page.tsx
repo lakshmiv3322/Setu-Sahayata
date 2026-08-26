@@ -27,7 +27,7 @@ import { Card } from '@/components/ui/card';
 import { Navbar } from '@/components/navbar';
 import { useLanguage } from '@/lib/language-context';
 import { useAuth } from '@/lib/auth-context';
-import { supabase } from '@/lib/supabase-client';
+import { supabaseBrowser as supabase } from '@/lib/supabase-browser';
 import type { ExtractedDocumentFields } from '@/app/api/extract-document/route';
 import { validateExtractedDocument, type ValidationSummary } from '@/lib/document-validation';
 import { ConsentModal } from '@/components/consent-modal';

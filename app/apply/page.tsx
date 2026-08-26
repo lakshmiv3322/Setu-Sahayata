@@ -22,10 +22,11 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Navbar } from '@/components/navbar';
 import { Confetti } from '@/components/confetti';
+import { PrintableApplicationKit } from '@/components/printable-application-kit';
 import { useLanguage } from '@/lib/language-context';
 import { useAuth } from '@/lib/auth-context';
 import { useRequireAuth } from '@/lib/use-require-auth';
-import { supabase } from '@/lib/supabase-client';
+import { supabaseBrowser as supabase } from '@/lib/supabase-browser';
 import type { ApplicationField } from '@/lib/types';
 
 const steps = [
@@ -53,6 +54,7 @@ export default function ApplyPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [fields, setFields] = useState<ApplicationField[]>([]);
+  const [generatedAt, setGeneratedAt] = useState('');
 
   const userDisplayName =
     (user?.user_metadata?.full_name as string) ||
@@ -229,17 +231,18 @@ export default function ApplyPage() {
         scheme_id: TARGET_SCHEME.id,
         scheme_name: TARGET_SCHEME.name,
         application_id: id,
-        status: 'Submitted',
+        status: 'Prepared',
         benefit_amount: TARGET_SCHEME.benefitAmount,
       });
 
       if (error) {
-        setSubmitError(t('Failed to submit application. Please try again.', 'आवेदन जमा करने में विफल। कृपया पुनः प्रयास करें।'));
+        setSubmitError(t('Failed to prepare application. Please try again.', 'आवेदन तैयार करने में विफल। कृपया पुनः प्रयास करें।'));
         setSubmitting(false);
         return;
       }
 
       setTrackingId(id);
+      setGeneratedAt(new Date().toLocaleString(isHindi ? 'hi-IN' : 'en-IN'));
       setSubmitted(true);
     } catch {
       setSubmitError(t('Something went wrong. Please try again.', 'कुछ गलत हुआ। कृपया पुनः प्रयास करें।'));
@@ -257,44 +260,60 @@ export default function ApplyPage() {
   if (submitted) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-trust-50 via-white to-emerald-50/30">
-        <Confetti trigger={submitted} />
         <Navbar />
-        <div className="mx-auto flex min-h-screen max-w-2xl items-center justify-center px-4 pt-20">
+        <div className="mx-auto flex min-h-screen max-w-2xl items-center justify-center px-4 pt-20 pb-16">
           <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
+            initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ type: 'spring', stiffness: 200, damping: 20 }}
           >
-            <Card className="overflow-hidden border-emerald-200 bg-white p-10 text-center shadow-2xl">
-              {/* Success icon */}
+            <Card className="overflow-hidden border-emerald-200 bg-white p-8 text-center shadow-2xl">
+              {/* Ready icon */}
               <motion.div
                 initial={{ scale: 0, rotate: -180 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.2 }}
-                className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-xl shadow-emerald-500/30"
+                className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-emerald-500 to-emerald-700 shadow-xl shadow-emerald-500/30 text-white"
               >
-                <PartyPopper className="h-12 w-12 text-white" />
+                <ClipboardCheck className="h-10 w-10" />
               </motion.div>
 
               <h1 className="text-3xl font-bold text-trust-900">
-                {t('Application Submitted!', 'आवेदन जमा हो गया!')}
+                {t('Application Kit Ready!', 'आवेदन किट तैयार है!')}
               </h1>
-              <p className="mt-3 text-muted-foreground">
+              <p className="mt-3 text-sm text-muted-foreground">
                 {t(
-                  `Congratulations, ${userDisplayName}! Your application for ${TARGET_SCHEME.name} has been submitted successfully.`,
-                  `बधाई हो, ${userDisplayName}! ${TARGET_SCHEME.nameHindi} के लिए आपका आवेदन सफलतापूर्वक जमा हो गया है।`
+                  `Great news, ${userDisplayName}! Your application form for ${TARGET_SCHEME.name} has been pre-filled and prepared.`,
+                  `बधाई हो, ${userDisplayName}! ${TARGET_SCHEME.nameHindi} के लिए आपकी आवेदन किट तैयार हो गई है।`
                 )}
               </p>
+
+              {/* Disclaimer Card */}
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="mt-6 text-left rounded-2xl border border-amber-200 bg-amber-50/80 p-4 flex items-start gap-3"
+              >
+                <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="text-xs text-amber-900 leading-relaxed">
+                  <strong className="font-semibold">{t('Official Submission Disclaimer:', 'आधिकारिक सबमिशन घोषणा:')}</strong>{' '}
+                  {t(
+                    'Setu Sahayata is an eligibility & preparation assistant. We do not submit directly to government databases. To complete your official application, present this kit or tracking ID at your local Jan Seva Kendra / CSC center or official scheme portal.',
+                    'सेतु सहायता एक पात्रता और तैयारी सहायक है। हम सीधे सरकारी डेटाबेस में आवेदन जमा नहीं करते हैं। अपना आधिकारिक आवेदन पूरा करने के लिए, इस किट या ट्रैकिंग आईडी को अपने नजदीकी जन सेवा केंद्र या आधिकारिक पोर्टल पर प्रस्तुत करें।'
+                  )}
+                </div>
+              </motion.div>
 
               {/* Tracking ID */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className="mt-8 rounded-2xl border-2 border-dashed border-trust-200 bg-trust-50/50 p-6"
+                transition={{ delay: 0.4 }}
+                className="mt-6 rounded-2xl border-2 border-dashed border-trust-200 bg-trust-50/50 p-5"
               >
-                <p className="text-sm font-medium text-muted-foreground">
-                  {t('Your Tracking ID', 'आपकी ट्रैकिंग आईडी')}
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  {t('Your Application Preparation ID', 'आपकी आवेदन तैयारी आईडी')}
                 </p>
                 <div className="mt-2 flex items-center justify-center gap-3">
                   <span className="text-2xl font-bold tracking-wider text-trust-700">
@@ -303,58 +322,66 @@ export default function ApplyPage() {
                   <button
                     onClick={handleCopyId}
                     className="rounded-lg p-2 text-trust-600 transition-colors hover:bg-trust-100"
+                    title={t('Copy ID', 'आईडी कॉपी करें')}
                   >
                     {copied ? <Check className="h-5 w-5 text-emerald-600" /> : <Copy className="h-5 w-5" />}
                   </button>
                 </div>
-                <p className="mt-3 text-xs text-muted-foreground">
-                  {t('Save this ID to track your application status anytime.', 'अपने आवेदन की स्थिति कभी भी ट्रैक करने के लिए इस आईडी को सहेजें।')}
-                </p>
               </motion.div>
 
-              {/* Summary stats */}
+              {/* Next steps checklist */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.7 }}
-                className="mt-6 grid grid-cols-3 gap-3"
+                transition={{ delay: 0.5 }}
+                className="mt-6 text-left rounded-2xl border border-trust-100 bg-trust-50/40 p-5 space-y-3"
               >
-                {[
-                  { value: TARGET_SCHEME.benefitAmount, label: t('Loan Amount', 'ऋण राशि') },
-                  { value: '7-10', label: t('Days to Process', 'प्रोसेसिंग दिन') },
-                  { value: '0%', label: t('Interest Rate', 'ब्याज दर') },
-                ].map((stat, i) => (
-                  <div key={i} className="rounded-xl bg-trust-50 p-4">
-                    <div className="text-lg font-bold text-trust-700">{stat.value}</div>
-                    <div className="text-xs text-muted-foreground">{stat.label}</div>
-                  </div>
-                ))}
+                <h4 className="text-xs font-bold text-trust-900 uppercase tracking-wider flex items-center gap-2">
+                  <UserCheck className="h-4 w-4 text-trust-600" />
+                  {t('How to File Official Application', 'आधिकारिक आवेदन कैसे जमा करें')}
+                </h4>
+                <ul className="text-xs text-trust-800 space-y-2 list-disc pl-5 leading-relaxed">
+                  <li>{t('Carry your Aadhaar Card & Ration Card / Udyam certificate.', 'अपना आधार कार्ड और राशन कार्ड / उद्यम प्रमाणपत्र साथ रखें।')}</li>
+                  <li>{t('Visit Nearest CSC Center: Jan Seva Kendra — Vikas Bhawan, Gomti Nagar, Lucknow', 'नजदीकी सीएससी केंद्र जाएं: जन सेवा केंद्र — विकास भवन, गोमती नगर, लखनऊ')}</li>
+                  <li>{t('Or file directly on official portal: https://pmsvanidhi.mohua.gov.in', 'या सीधे आधिकारिक पोर्टल पर जमा करें: https://pmsvanidhi.mohua.gov.in')}</li>
+                </ul>
               </motion.div>
 
               {/* Actions */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.9 }}
+                transition={{ delay: 0.6 }}
                 className="mt-8 flex flex-col gap-3 sm:flex-row"
               >
                 <Button
                   size="lg"
                   className="flex-1 gap-2 bg-trust-600 hover:bg-trust-700"
-                  onClick={() => router.push('/dashboard')}
+                  onClick={() => window.print()}
                 >
-                  <TrendingUp className="h-5 w-5" />
-                  {t('Track My Application', 'मेरा आवेदन ट्रैक करें')}
+                  <FileText className="h-5 w-5" />
+                  {t('Print / Download Application Kit', 'आवेदन किट प्रिंट / डाउनलोड करें')}
                 </Button>
                 <Button
                   size="lg"
                   variant="outline"
                   className="flex-1 gap-2"
-                  onClick={() => router.push('/')}
+                  onClick={() => router.push('/dashboard')}
                 >
-                  {t('Back to Home', 'होम पर जाएं')}
+                  <TrendingUp className="h-5 w-5" />
+                  {t('Go to Dashboard', 'डैशबोर्ड पर जाएं')}
                 </Button>
               </motion.div>
+
+              {/* Printable Kit — hidden on screen, visible only when printing */}
+              <PrintableApplicationKit
+                trackingId={trackingId}
+                schemeName={TARGET_SCHEME.name}
+                schemeNameHindi={TARGET_SCHEME.nameHindi}
+                fields={fields}
+                isHindi={isHindi}
+                generatedAt={generatedAt}
+              />
             </Card>
           </motion.div>
         </div>
@@ -581,15 +608,26 @@ export default function ApplyPage() {
                       <ArrowRight className="h-4 w-4" />
                     </Button>
                   ) : (
-                    <Button
-                      size="lg"
-                      className="flex-1 gap-2 bg-emerald-600 text-base hover:bg-emerald-700 shadow-lg shadow-emerald-500/30"
-                      onClick={handleSubmit}
-                      disabled={submitting}
-                    >
-                      <CheckCircle2 className="h-5 w-5" />
-                      {submitting ? t('Submitting...', 'जमा हो रहा है...') : t('Submit Application', 'आवेदन जमा करें')}
-                    </Button>
+                    <div className="flex-1 flex flex-col gap-2">
+                      <div className="text-xs text-amber-700 bg-amber-50/70 p-3 rounded-xl border border-amber-200 flex items-start gap-2 mb-2 font-medium">
+                        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
+                        <span>
+                          {t(
+                            'Notice: Preparing this application kit does NOT submit your data directly to government servers. To file officially, print this kit or present your Tracking ID at a local Jan Seva Kendra / CSC center.',
+                            'सूचना: इस आवेदन किट को तैयार करने से आपका डेटा सीधे सरकारी सर्वर पर जमा नहीं होता है। आधिकारिक रूप से जमा करने के लिए, इस किट को प्रिंट करें या नजदीकी जन सेवा केंद्र पर प्रस्तुत करें।'
+                          )}
+                        </span>
+                      </div>
+                      <Button
+                        size="lg"
+                        className="w-full gap-2 bg-emerald-600 text-base hover:bg-emerald-700 shadow-lg shadow-emerald-500/30"
+                        onClick={handleSubmit}
+                        disabled={submitting}
+                      >
+                        <CheckCircle2 className="h-5 w-5" />
+                        {submitting ? t('Submitting...', 'जमा हो रहा है...') : t('Submit Application', 'आवेदन जमा करें')}
+                      </Button>
+                    </div>
                   )}
                 </div>
               </Card>

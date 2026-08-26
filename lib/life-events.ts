@@ -14,8 +14,9 @@ export interface SchemeTriggerAlert {
 }
 
 /**
- * Evaluates stored user profile against life event milestones & deadline schedules
- * to generate personalized proactive alerts.
+ * Evaluates stored user profile against life event milestones to generate personalized proactive alerts.
+ * NOTE: Only add a deadline/daysRemaining field if it is backed by a real, dated, sourced record
+ * in the schemes table (with verified_at timestamp). Never invent synthetic urgency.
  */
 export function evaluateLifeEventTriggers(profile: StoredProfile | null): SchemeTriggerAlert[] {
   if (!profile) return [];
@@ -45,9 +46,7 @@ export function evaluateLifeEventTriggers(profile: StoredProfile | null): Scheme
       schemeNameHindi: 'पीएम स्वनिधि 2024 दूसरी किस्त',
       triggerReason: 'Vendor status detected — unlock 0% interest ₹20,000 credit enhancement',
       triggerReasonHindi: 'विक्रेता स्थिति का पता चला — 0% ब्याज ₹20,000 क्रेडिट अनलॉक करें',
-      daysRemaining: 18,
-      deadlineDate: '2026-09-15',
-      type: 'deadline',
+      type: 'life_event',
       badgeColor: 'amber',
     });
   }
@@ -71,13 +70,11 @@ export function evaluateLifeEventTriggers(profile: StoredProfile | null): Scheme
     alerts.push({
       id: 'alert-ayushman-health',
       schemeId: 'ayushman-bharat',
-      schemeName: 'Ayushman Bharat Card Renewal',
-      schemeNameHindi: 'आयुष्मान भारत कार्ड नवीनीकरण',
+      schemeName: 'Ayushman Bharat Card',
+      schemeNameHindi: 'आयुष्मान भारत कार्ड',
       triggerReason: 'Annual family ₹5 Lakh health insurance e-card generated',
       triggerReasonHindi: 'वार्षिक पारिवारिक ₹5 लाख स्वास्थ्य बीमा ई-कार्ड जनरेट हुआ',
-      daysRemaining: 7,
-      deadlineDate: '2026-08-31',
-      type: 'deadline',
+      type: 'life_event',
       badgeColor: 'rose',
     });
   }

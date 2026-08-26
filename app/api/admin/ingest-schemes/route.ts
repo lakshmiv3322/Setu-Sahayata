@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import { syncGovernmentSchemesData } from '@/lib/scheme-ingestion';
-import { supabase } from '@/lib/supabase-client';
+import { createSupabaseServerClient } from '@/lib/supabase-server';
 
 export async function POST(req: Request) {
   try {
+    const supabase = createSupabaseServerClient();
+
     // 1. Verify user is authenticated
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -31,8 +33,38 @@ export async function POST(req: Request) {
       // Body optional — syncs default open-data set if no body provided
     }
 
-    // 3. Execute scheme sync
-    const result = await syncGovernmentSchemesData(externalPayloads);
+    if (externalPayloads.length === 0) {
+      try {
+        const host = req.headers.get('host') || 'localhost:3000';
+        const protocol = host.includes('localhost') ? 'http' : 'https';
+        const response = await fetch(`${protocol}://${host}/mock-gov-feed.json`);
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data.schemes)) {
+            externalPayloads = data.schemes;
+          }
+        } else {
+          throw new Error(`HTTP ${response.status}`);
+        }
+      } catch (fetchErr) {
+        console.warn('Failed to fetch mock-gov-feed.json via HTTP, reading from file system:', fetchErr);
+        try {
+          const fs = await import('fs/promises');
+          const path = await import('path');
+          const filePath = path.join(process.cwd(), 'public', 'mock-gov-feed.json');
+          const fileContent = await fs.readFile(filePath, 'utf-8');
+          const data = JSON.parse(fileContent);
+          if (Array.isArray(data.schemes)) {
+            externalPayloads = data.schemes;
+          }
+        } catch (fsErr) {
+          console.error('Failed to read mock-gov-feed.json from file system:', fsErr);
+        }
+      }
+    }
+
+    // 3. Execute scheme sync with request-scoped authenticated server client
+    const result = await syncGovernmentSchemesData(externalPayloads, supabase);
 
     if (!result.success) {
       return NextResponse.json({ error: result.error || 'Ingestion failed' }, { status: 500 });

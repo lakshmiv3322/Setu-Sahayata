@@ -161,4 +161,145 @@ export const SCHEME_RULES: SchemeRule[] = [
       },
     ],
   },
+  {
+    schemeId: 'pm-kisan',
+    criteria: [
+      {
+        field: 'has_aadhaar',
+        op: 'is_true',
+        value: true,
+        label: 'Has Aadhaar card',
+        labelHindi: 'आधार कार्ड है',
+      },
+      {
+        field: 'occupation',
+        op: 'contains',
+        value: 'farmer',
+        label: 'Occupation is farmer / landholder',
+        labelHindi: 'व्यवसाय: किसान / भूमिधारक',
+      },
+    ],
+  },
+  {
+    schemeId: 'pmkvy',
+    criteria: [
+      {
+        field: 'has_aadhaar',
+        op: 'is_true',
+        value: true,
+        label: 'Has Aadhaar card',
+        labelHindi: 'आधार कार्ड है',
+      },
+    ],
+  },
+  {
+    schemeId: 'ujjwala-yojana',
+    criteria: [
+      {
+        field: 'gender',
+        op: 'eq',
+        value: 'Female',
+        label: 'Applicant is female',
+        labelHindi: 'आवेदक महिला है',
+      },
+      {
+        field: 'income',
+        op: 'lte',
+        value: 180000,
+        label: 'Annual income ≤ ₹1,80,000 (BPL)',
+        labelHindi: 'वार्षिक आय ≤ ₹1,80,000 (बीपीएल)',
+      },
+    ],
+  },
+  {
+    schemeId: 'pmjjby',
+    criteria: [
+      {
+        field: 'has_aadhaar',
+        op: 'is_true',
+        value: true,
+        label: 'Has Aadhaar card',
+        labelHindi: 'आधार कार्ड है',
+      },
+    ],
+  },
+  {
+    schemeId: 'pmsby',
+    criteria: [
+      {
+        field: 'has_aadhaar',
+        op: 'is_true',
+        value: true,
+        label: 'Has Aadhaar card',
+        labelHindi: 'आधार कार्ड है',
+      },
+    ],
+  },
+  {
+    schemeId: 'apy',
+    criteria: [
+      {
+        field: 'has_aadhaar',
+        op: 'is_true',
+        value: true,
+        label: 'Has Aadhaar card',
+        labelHindi: 'आधार कार्ड है',
+      },
+    ],
+  },
+  {
+    schemeId: 'nsp-scholarship',
+    criteria: [
+      {
+        field: 'income',
+        op: 'lte',
+        value: 250000,
+        label: 'Annual family income ≤ ₹2,50,000',
+        labelHindi: 'वार्षिक पारिवारिक आय ≤ ₹2,50,000',
+      },
+    ],
+  },
+  {
+    schemeId: 'pm-poshan',
+    criteria: [
+      {
+        field: 'has_ration_card',
+        op: 'is_true',
+        value: true,
+        label: 'Has ration card / enrolled student',
+        labelHindi: 'राशन कार्ड / नामांकित छात्र है',
+      },
+    ],
+  },
+  {
+    schemeId: 'sbm-gramin',
+    criteria: [
+      {
+        field: 'has_ration_card',
+        op: 'is_true',
+        value: true,
+        label: 'Has ration card (BPL/APL rural)',
+        labelHindi: 'राशन कार्ड (ग्रामीण) है',
+      },
+    ],
+  },
+  {
+    schemeId: 'stand-up-india',
+    criteria: [
+      {
+        field: 'gender',
+        op: 'eq',
+        value: 'Female',
+        label: 'Women or SC/ST entrepreneur',
+        labelHindi: 'महिला या एससी/एसटी उद्यमी',
+      },
+      {
+        field: 'has_udyam',
+        op: 'is_true',
+        value: true,
+        label: 'Has Udyam registration',
+        labelHindi: 'उद्यम पंजीकरण है',
+      },
+    ],
+  },
 ];

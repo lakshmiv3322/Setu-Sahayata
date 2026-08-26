@@ -1,0 +1,442 @@
+{
+  "schemes": [
+    {
+      "scheme_id": "pm-svanidhi",
+      "scheme_name": "PM SVANidhi",
+      "scheme_name_hindi": "पीएम स्वनिधि",
+      "ministry": "Ministry of Housing & Urban Affairs",
+      "ministry_hindi": "आवास और शहरी मामलों के मंत्रालय",
+      "benefit_summary": "Collateral-free working capital loan up to ₹10,000",
+      "benefit_summary_hindi": "बिना गारंटी कार्यशील पूंजी ऋण ₹10,000 तक",
+      "benefit_amount": "₹10,000",
+      "category": "Finance",
+      "eligibility_tags": ["Street Vendor", "Udyam Certificate", "Urban Area"],
+      "source_url": "https://www.myscheme.gov.in/schemes/pm-svanidhi",
+      "last_verified_at": "2026-08-25T12:00:00Z",
+      "rules": [
+        {
+          "field": "income",
+          "op": "lte",
+          "value": 200000,
+          "label": "Annual income ≤ ₹2,00,000",
+          "labelHindi": "वार्षिक आय ≤ ₹2,00,000"
+        },
+        {
+          "field": "has_aadhaar",
+          "op": "is_true",
+          "value": true,
+          "label": "Has Aadhaar card",
+          "labelHindi": "आधार कार्ड है"
+        },
+        {
+          "field": "occupation",
+          "op": "contains",
+          "value": "vendor",
+          "label": "Occupation is street vendor / vendor",
+          "labelHindi": "व्यवसाय: सड़क विक्रेता / विक्रेता"
+        }
+      ]
+    },
+    {
+      "scheme_id": "mudra-yojana",
+      "scheme_name": "Pradhan Mantri Mudra Yojana",
+      "scheme_name_hindi": "प्रधानमंत्री मुद्रा योजना",
+      "ministry": "Ministry of Finance",
+      "ministry_hindi": "वित्त मंत्रालय",
+      "benefit_summary": "Business loan up to ₹10,00,000 without collateral",
+      "benefit_summary_hindi": "बिना गारंटी व्यापार ऋण ₹10,00,000 तक",
+      "benefit_amount": "₹10,00,000",
+      "category": "Finance",
+      "eligibility_tags": ["Small Business", "Income < ₹8L", "Non-farm"],
+      "source_url": "https://www.myscheme.gov.in/schemes/pmmy",
+      "last_verified_at": "2026-08-25T11:30:00Z",
+      "rules": [
+        {
+          "field": "income",
+          "op": "lte",
+          "value": 800000,
+          "label": "Annual income ≤ ₹8,00,000",
+          "labelHindi": "वार्षिक आय ≤ ₹8,00,000"
+        },
+        {
+          "field": "has_aadhaar",
+          "op": "is_true",
+          "value": true,
+          "label": "Has Aadhaar card",
+          "labelHindi": "आधार कार्ड है"
+        },
+        {
+          "field": "occupation",
+          "op": "contains",
+          "value": "business",
+          "label": "Occupation is business / self-employed",
+          "labelHindi": "व्यवसाय: व्यापार / स्व-रोजगार"
+        }
+      ]
+    },
+    {
+      "scheme_id": "ayushman-bharat",
+      "scheme_name": "Ayushman Bharat (PM-JAY)",
+      "scheme_name_hindi": "आयुष्मान भारत (पीएम-जय)",
+      "ministry": "Ministry of Health & Family Welfare",
+      "ministry_hindi": "स्वास्थ्य और परिवार कल्याण मंत्रालय",
+      "benefit_summary": "Health insurance cover of ₹5,00,000 per family per year",
+      "benefit_summary_hindi": "प्रति परिवार प्रति वर्ष ₹5,00,000 का स्वास्थ्य बीमा",
+      "benefit_amount": "₹5,00,000",
+      "category": "Health",
+      "eligibility_tags": ["Low Income", "Ration Card", "Family Coverage"],
+      "source_url": "https://www.myscheme.gov.in/schemes/ab-pmjay",
+      "last_verified_at": "2026-08-24T09:00:00Z",
+      "rules": [
+        {
+          "field": "income",
+          "op": "lte",
+          "value": 500000,
+          "label": "Annual income ≤ ₹5,00,000",
+          "labelHindi": "वार्षिक आय ≤ ₹5,00,000"
+        },
+        {
+          "field": "has_ration_card",
+          "op": "is_true",
+          "value": true,
+          "label": "Has ration card",
+          "labelHindi": "राशन कार्ड है"
+        }
+      ]
+    },
+    {
+      "scheme_id": "pmay",
+      "scheme_name": "Pradhan Mantri Awas Yojana",
+      "scheme_name_hindi": "प्रधानमंत्री आवास योजना",
+      "ministry": "Ministry of Housing & Urban Affairs",
+      "ministry_hindi": "आवास और शहरी मामलों के मंत्रालय",
+      "benefit_summary": "Interest subsidy on home loans up to ₹2.67 lakh",
+      "benefit_summary_hindi": "गृह ऋण पर ₹2.67 लाख तक ब्याज सब्सिडी",
+      "benefit_amount": "₹2.67 L",
+      "category": "Housing",
+      "eligibility_tags": ["No pucca house", "Income < ₹6L", "Family"],
+      "source_url": "https://www.myscheme.gov.in/schemes/pmay-u",
+      "last_verified_at": "2026-08-25T10:00:00Z",
+      "rules": [
+        {
+          "field": "income",
+          "op": "lte",
+          "value": 600000,
+          "label": "Annual income ≤ ₹6,00,000",
+          "labelHindi": "वार्षिक आय ≤ ₹6,00,000"
+        },
+        {
+          "field": "has_aadhaar",
+          "op": "is_true",
+          "value": true,
+          "label": "Has Aadhaar card",
+          "labelHindi": "आधार कार्ड है"
+        }
+      ]
+    },
+    {
+      "scheme_id": "sukanya-samriddhi",
+      "scheme_name": "Sukanya Samriddhi Yojana",
+      "scheme_name_hindi": "सुकन्या समृद्धि योजना",
+      "ministry": "Ministry of Finance",
+      "ministry_hindi": "वित्त मंत्रालय",
+      "benefit_summary": "Savings account with 8.2% interest for girl child",
+      "benefit_summary_hindi": "बालिका के लिए 8.2% ब्याज दर का बचत खाता",
+      "benefit_amount": "8.2% p.a.",
+      "category": "Women",
+      "eligibility_tags": ["Girl Child", "Age < 10", "Savings"],
+      "source_url": "https://www.myscheme.gov.in/schemes/ssy",
+      "last_verified_at": "2026-08-25T08:00:00Z",
+      "rules": [
+        {
+          "field": "gender",
+          "op": "eq",
+          "value": "Female",
+          "label": "Applicant is female",
+          "labelHindi": "आवेदक महिला है"
+        },
+        {
+          "field": "has_aadhaar",
+          "op": "is_true",
+          "value": true,
+          "label": "Has Aadhaar card",
+          "labelHindi": "आधार कार्ड है"
+        }
+      ]
+    },
+    {
+      "scheme_id": "anna-yojana",
+      "scheme_name": "Antyodaya Anna Yojana",
+      "scheme_name_hindi": "अंत्योदय अन्न योजना",
+      "ministry": "Ministry of Consumer Affairs",
+      "ministry_hindi": "उपभोक्ता मामलों के मंत्रालय",
+      "benefit_summary": "35 kg food grains at subsidized rates per month",
+      "benefit_summary_hindi": "प्रति माह 35 किग्रा अनाज सब्सिडी दर पर",
+      "benefit_amount": "35 kg/mo",
+      "category": "Food",
+      "eligibility_tags": ["BPL Card", "Ration Card", "Lowest Income"],
+      "source_url": "https://www.myscheme.gov.in/schemes/aay",
+      "last_verified_at": "2026-08-23T14:00:00Z",
+      "rules": [
+        {
+          "field": "income",
+          "op": "lte",
+          "value": 150000,
+          "label": "Annual income ≤ ₹1,50,000",
+          "labelHindi": "वार्षिक आय ≤ ₹1,50,000"
+        },
+        {
+          "field": "has_ration_card",
+          "op": "is_true",
+          "value": true,
+          "label": "Has ration card",
+          "labelHindi": "राशन कार्ड है"
+        }
+      ]
+    },
+    {
+      "scheme_id": "pm-kisan",
+      "scheme_name": "PM Kisan Samman Nidhi",
+      "scheme_name_hindi": "पीएम किसान सम्मान निधि",
+      "ministry": "Ministry of Agriculture & Farmers Welfare",
+      "ministry_hindi": "कृषि एवं किसान कल्याण मंत्रालय",
+      "benefit_summary": "₹6,000 per year direct income support",
+      "benefit_summary_hindi": "प्रति वर्ष ₹6,000 सीधी आय सहायता",
+      "benefit_amount": "₹6,000/yr",
+      "category": "Finance",
+      "eligibility_tags": ["Farmer", "Aadhaar Linked", "Landholder"],
+      "source_url": "https://www.myscheme.gov.in/schemes/pm-kisan",
+      "last_verified_at": "2026-08-25T05:00:00Z",
+      "rules": [
+        {
+          "field": "occupation",
+          "op": "contains",
+          "value": "farmer",
+          "label": "Occupation is farmer",
+          "labelHindi": "व्यवसाय: किसान"
+        },
+        {
+          "field": "has_aadhaar",
+          "op": "is_true",
+          "value": true,
+          "label": "Has Aadhaar card",
+          "labelHindi": "आधार कार्ड है"
+        }
+      ]
+    },
+    {
+      "scheme_id": "pmkvy",
+      "scheme_name": "Pradhan Mantri Kaushal Vikas Yojana",
+      "scheme_name_hindi": "प्रधानमंत्री कौशल विकास योजना",
+      "ministry": "Ministry of Skill Development & Entrepreneurship",
+      "ministry_hindi": "कौशल विकास और उद्यमिता मंत्रालय",
+      "benefit_summary": "Free industry-relevant skill training",
+      "benefit_summary_hindi": "निःशुल्क कौशल प्रशिक्षण",
+      "benefit_amount": "Free Training",
+      "category": "Education",
+      "eligibility_tags": ["Youth", "Skill Training", "Free Certification"],
+      "source_url": "https://www.myscheme.gov.in/schemes/pmkvy",
+      "last_verified_at": "2026-08-25T04:00:00Z",
+      "rules": [
+        {
+          "field": "income",
+          "op": "lte",
+          "value": 400000,
+          "label": "Annual income ≤ ₹4,0,000",
+          "labelHindi": "वार्षिक आय ≤ ₹4,0,000"
+        }
+      ]
+    },
+    {
+      "scheme_id": "ujjwala-yojana",
+      "scheme_name": "Pradhan Mantri Ujjwala Yojana",
+      "scheme_name_hindi": "प्रधानमंत्री उज्जवला योजना",
+      "ministry": "Ministry of Petroleum & Natural Gas",
+      "ministry_hindi": "पेट्रोलियम एवं प्राकृतिक गैस मंत्रालय",
+      "benefit_summary": "Deposit-free LPG connection & financial assistance",
+      "benefit_summary_hindi": "डिपॉजिट-फ्री एलपीजी कनेक्शन",
+      "benefit_amount": "Free LPG Connection",
+      "category": "Women",
+      "eligibility_tags": ["Women", "BPL Household", "Aadhaar Required"],
+      "source_url": "https://www.myscheme.gov.in/schemes/pmuj",
+      "last_verified_at": "2026-08-25T03:00:00Z",
+      "rules": [
+        {
+          "field": "gender",
+          "op": "eq",
+          "value": "Female",
+          "label": "Applicant is female",
+          "labelHindi": "आवेदक महिला है"
+        },
+        {
+          "field": "has_aadhaar",
+          "op": "is_true",
+          "value": true,
+          "label": "Has Aadhaar card",
+          "labelHindi": "आधार कार्ड है"
+        }
+      ]
+    },
+    {
+      "scheme_id": "pmjjby",
+      "scheme_name": "Pradhan Mantri Jeevan Jyoti Bima Yojana",
+      "scheme_name_hindi": "प्रधानमंत्री जीवन ज्योति बीमा योजना",
+      "ministry": "Ministry of Finance",
+      "ministry_hindi": "वित्त मंत्रालय",
+      "benefit_summary": "Life insurance cover of ₹2,00,000",
+      "benefit_summary_hindi": "₹2,00,000 का जीवन बीमा",
+      "benefit_amount": "₹2,00,000",
+      "category": "Finance",
+      "eligibility_tags": ["Age 18-50", "Bank Account", "Low Premium"],
+      "source_url": "https://www.myscheme.gov.in/schemes/pmjjby",
+      "last_verified_at": "2026-08-25T02:00:00Z",
+      "rules": [
+        {
+          "field": "income",
+          "op": "lte",
+          "value": 500000,
+          "label": "Annual income ≤ ₹5,00,000",
+          "labelHindi": "वार्षिक आय ≤ ₹5,00,000"
+        }
+      ]
+    },
+    {
+      "scheme_id": "pmsby",
+      "scheme_name": "Pradhan Mantri Suraksha Bima Yojana",
+      "scheme_name_hindi": "प्रधानमंत्री सुरक्षा बीमा योजना",
+      "ministry": "Ministry of Finance",
+      "ministry_hindi": "वित्त मंत्रालय",
+      "benefit_summary": "Accidental death & disability cover up to ₹2,00,000",
+      "benefit_summary_hindi": "₹2,00,000 तक दुर्घटना बीमा",
+      "benefit_amount": "₹2,00,000",
+      "category": "Health",
+      "eligibility_tags": ["Age 18-70", "Bank Account", "Micro Insurance"],
+      "source_url": "https://www.myscheme.gov.in/schemes/pmsby",
+      "last_verified_at": "2026-08-25T01:00:00Z",
+      "rules": [
+        {
+          "field": "income",
+          "op": "lte",
+          "value": 500000,
+          "label": "Annual income ≤ ₹5,00,000",
+          "labelHindi": "वार्षिक आय ≤ ₹5,00,000"
+        }
+      ]
+    },
+    {
+      "scheme_id": "apy",
+      "scheme_name": "Atal Pension Yojana",
+      "scheme_name_hindi": "अटल पेंशन योजना",
+      "ministry": "Ministry of Finance",
+      "ministry_hindi": "वित्त मंत्रालय",
+      "benefit_summary": "Monthly pension of ₹1,000 to ₹5,000 after age 60",
+      "benefit_summary_hindi": "₹1,000 से ₹5,000 की मासिक पेंशन",
+      "benefit_amount": "Up to ₹5,00,000/mo",
+      "category": "Finance",
+      "eligibility_tags": ["Unorganized Worker", "Age 18-40", "Pension"],
+      "source_url": "https://www.myscheme.gov.in/schemes/apy",
+      "last_verified_at": "2026-08-25T00:30:00Z",
+      "rules": [
+        {
+          "field": "income",
+          "op": "lte",
+          "value": 300000,
+          "label": "Annual income ≤ ₹3,00,000",
+          "labelHindi": "वार्षिक आय ≤ ₹3,00,000"
+        }
+      ]
+    },
+    {
+      "scheme_id": "nsp-scholarship",
+      "scheme_name": "National Scholarship Portal Scheme",
+      "scheme_name_hindi": "राष्ट्रीय छात्रवृत्ति पोर्टल योजना",
+      "ministry": "Ministry of Education",
+      "ministry_hindi": "शिक्षा मंत्रालय",
+      "benefit_summary": "Financial assistance for pre-matric & post-matric students",
+      "benefit_summary_hindi": "छात्रों के लिए वित्तीय सहायता",
+      "benefit_amount": "Up to ₹20,000/yr",
+      "category": "Education",
+      "eligibility_tags": ["Students", "SC/ST/OBC", "Income < ₹2.5L"],
+      "source_url": "https://www.myscheme.gov.in/schemes/nsp",
+      "last_verified_at": "2026-08-24T18:00:00Z",
+      "rules": [
+        {
+          "field": "income",
+          "op": "lte",
+          "value": 250000,
+          "label": "Annual income ≤ ₹2,50,000",
+          "labelHindi": "वार्षिक आय ≤ ₹2,50,000"
+        }
+      ]
+    },
+    {
+      "scheme_id": "pm-poshan",
+      "scheme_name": "PM POSHAN Scheme",
+      "scheme_name_hindi": "पीएम पोषण योजना",
+      "ministry": "Ministry of Education",
+      "ministry_hindi": "शिक्षा मंत्रालय",
+      "benefit_summary": "Free mid-day meals for school children",
+      "benefit_summary_hindi": "स्कूली बच्चों के लिए मुफ्त भोजन",
+      "benefit_amount": "Free Meals",
+      "category": "Food",
+      "eligibility_tags": ["School Children", "Nutrition", "Free Meal"],
+      "source_url": "https://www.myscheme.gov.in/schemes/pm-poshan",
+      "last_verified_at": "2026-08-24T12:00:00Z",
+      "rules": [
+        {
+          "field": "income",
+          "op": "lte",
+          "value": 150000,
+          "label": "Annual income ≤ ₹1,50,000",
+          "labelHindi": "वार्षिक आय ≤ ₹1,50,000"
+        }
+      ]
+    },
+    {
+      "scheme_id": "sbm-gramin",
+      "scheme_name": "Swachh Bharat Mission Gramin",
+      "scheme_name_hindi": "स्वच्छ भारत मिशन ग्रामीण",
+      "ministry": "Ministry of Jal Shakti",
+      "ministry_hindi": "जल शक्ति मंत्रालय",
+      "benefit_summary": "Incentive of ₹12,000 for IHHL",
+      "benefit_summary_hindi": "शौचालय निर्माण के लिए ₹12,000",
+      "benefit_amount": "₹12,000",
+      "category": "Housing",
+      "eligibility_tags": ["Rural Household", "No Toilet", "BPL/APL"],
+      "source_url": "https://www.myscheme.gov.in/schemes/sbm-g",
+      "last_verified_at": "2026-08-25T01:15:00Z",
+      "rules": [
+        {
+          "field": "income",
+          "op": "lte",
+          "value": 200000,
+          "label": "Annual income ≤ ₹2,00,000",
+          "labelHindi": "वार्षिक आय ≤ ₹2,00,000"
+        }
+      ]
+    },
+    {
+      "scheme_id": "stand-up-india",
+      "scheme_name": "Stand-Up India Scheme",
+      "scheme_name_hindi": "स्टैंड-अप इंडिया योजना",
+      "ministry": "Ministry of Finance",
+      "ministry_hindi": "वित्त मंत्रालय",
+      "benefit_summary": "Bank loan between ₹10 lakh to ₹1 crore for SC/ST/Women",
+      "benefit_summary_hindi": "SC/ST और महिलाओं के लिए ऋण",
+      "benefit_amount": "Up to ₹1 Crore",
+      "category": "Women",
+      "eligibility_tags": ["SC/ST", "Women Entrepreneur", "Greenfield Enterprise"],
+      "source_url": "https://www.myscheme.gov.in/schemes/standup-india",
+      "last_verified_at": "2026-08-24T16:00:00Z",
+      "rules": [
+        {
+          "field": "gender",
+          "op": "eq",
+          "value": "Female",
+          "label": "Applicant is female",
+          "labelHindi": "आवेदक महिला है"
+        }
+      ]
+    }
+  ]
+}

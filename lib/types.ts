@@ -1,4 +1,4 @@
-export type Language = 'en' | 'hi' | 'ta' | 'te' | 'bn' | 'mr';
+export type Language = 'en' | 'hi' | 'ta' | 'te' | 'bn' | 'mr' | 'kn';
 
 export interface LanguageOption {
   code: Language;
@@ -14,6 +14,7 @@ export const SUPPORTED_LANGUAGES: LanguageOption[] = [
   { code: 'te', label: 'Telugu', nativeLabel: 'తెలుగు', bcp47: 'te-IN' },
   { code: 'bn', label: 'Bengali', nativeLabel: 'বাংলা', bcp47: 'bn-IN' },
   { code: 'mr', label: 'Marathi', nativeLabel: 'मराठी', bcp47: 'mr-IN' },
+  { code: 'kn', label: 'Kannada', nativeLabel: 'ಕನ್ನಡ', bcp47: 'kn-IN' },
 ];
 
 export interface UserProfile {
@@ -30,6 +31,19 @@ export interface UserProfile {
   hasRationCard: boolean;
   hasUdyam: boolean;
   familySize: number;
+}
+
+export interface FamilyMember {
+  id: string;
+  name: string;
+  age: number;
+  gender: string;
+  relation: string;
+  income: number;
+  occupation: string;
+  has_aadhaar: boolean;
+  has_ration_card: boolean;
+  has_udyam: boolean;
 }
 
 export interface MatchExplanation {
@@ -56,7 +70,10 @@ export interface Scheme {
   category: 'Finance' | 'Health' | 'Housing' | 'Food' | 'Education' | 'Women';
   icon: string;
   eligibilityTags: string[];
+  eligibilityRules?: any[];
   matchExplanation?: MatchExplanation;
+  sourceUrl?: string;
+  lastVerifiedAt?: string;
 }
 
 export interface AssistanceCenter {

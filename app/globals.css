@@ -99,3 +99,81 @@
     display: none;
   }
 }
+
+/* Print Styles for Application Kit */
+@media print {
+  header, nav, button, footer, .no-print {
+    display: none !important;
+  }
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .print-card {
+    box-shadow: none !important;
+    border: 1px solid #d1d5db !important;
+  }
+  .print-break-inside-avoid {
+    break-inside: avoid;
+  }
+}
+
+/* Accessibility Mode CSS */
+html.a11y-low-literacy {
+  font-size: 17px;
+  letter-spacing: 0.01em;
+  line-height: 1.7;
+}
+html.a11y-low-literacy button,
+html.a11y-low-literacy a {
+  min-height: 48px;
+  min-width: 48px;
+}
+html.a11y-low-literacy p,
+html.a11y-low-literacy li {
+  max-width: 65ch;
+}
+
+html.a11y-senior {
+  font-size: 20px;
+  letter-spacing: 0.015em;
+  line-height: 1.8;
+  filter: contrast(1.15);
+}
+html.a11y-senior button,
+html.a11y-senior a {
+  min-height: 56px;
+  min-width: 56px;
+}
+html.a11y-senior input,
+html.a11y-senior select,
+html.a11y-senior textarea {
+  font-size: 1.1rem;
+  padding: 0.75rem 1rem;
+}
+
+/* High Contrast Mode */
+html.a11y-high-contrast {
+  filter: contrast(1.4) saturate(1.2);
+}
+html.a11y-high-contrast body {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+html.a11y-high-contrast card,
+html.a11y-high-contrast .bg-white {
+  background-color: #121212 !important;
+  color: #ffffff !important;
+  border-color: #ffffff !important;
+}
+
+/* Dyslexia-Friendly Font Overrides */
+html.a11y-dyslexic body,
+html.a11y-dyslexic * {
+  font-family: 'OpenDyslexic', 'Comic Sans MS', sans-serif !important;
+  letter-spacing: 0.05em !important;
+  word-spacing: 0.1em !important;
+  line-height: 1.8 !important;
+}

@@ -1,4 +1,4 @@
-import type { Scheme } from './types';
+import type { Scheme, FamilyMember } from './types';
 import { SCHEME_RULES } from './scheme-eligibility';
 import type { CriterionCheck } from './scheme-eligibility';
 
@@ -12,6 +12,7 @@ export interface StoredProfile {
   has_udyam?: boolean | null;
   family_size?: number | null;
   gender?: string | null;
+  family_members?: FamilyMember[] | null;
 }
 
 export interface MatchExplanation {
@@ -56,6 +57,14 @@ function evaluateCriterion(criterion: CriterionCheck, profile: StoredProfile): b
   }
 }
 
+function getSchemeCriteria(scheme: Scheme): CriterionCheck[] {
+  if (Array.isArray(scheme.eligibilityRules) && scheme.eligibilityRules.length > 0) {
+    return scheme.eligibilityRules as CriterionCheck[];
+  }
+  const rule = SCHEME_RULES.find((r) => r.schemeId === scheme.id);
+  return rule ? rule.criteria : [];
+}
+
 /**
  * Computes how well a profile matches a scheme's eligibility rules.
  * Returns a percentage (0–100) based on the fraction of criteria met.
@@ -64,11 +73,11 @@ function evaluateCriterion(criterion: CriterionCheck, profile: StoredProfile): b
 export function computeMatchPercent(scheme: Scheme, profile: StoredProfile | null): number {
   if (!profile) return 0;
 
-  const rule = SCHEME_RULES.find((r) => r.schemeId === scheme.id);
-  if (!rule || rule.criteria.length === 0) return 50;
+  const criteria = getSchemeCriteria(scheme);
+  if (criteria.length === 0) return 50;
 
-  const passed = rule.criteria.filter((c) => evaluateCriterion(c, profile)).length;
-  return Math.round((passed / rule.criteria.length) * 100);
+  const passed = criteria.filter((c) => evaluateCriterion(c, profile)).length;
+  return Math.round((passed / criteria.length) * 100);
 }
 
 /**
@@ -83,21 +92,21 @@ export function computeMatchExplanation(
     return { passed: [], failed: [], passedHindi: [], failedHindi: [] };
   }
 
-  const rule = SCHEME_RULES.find((r) => r.schemeId === scheme.id);
-  if (!rule) return { passed: [], failed: [], passedHindi: [], failedHindi: [] };
+  const criteria = getSchemeCriteria(scheme);
+  if (criteria.length === 0) return { passed: [], failed: [], passedHindi: [], failedHindi: [] };
 
   const passed: string[] = [];
   const failed: string[] = [];
   const passedHindi: string[] = [];
   const failedHindi: string[] = [];
 
-  for (const criterion of rule.criteria) {
+  for (const criterion of criteria) {
     if (evaluateCriterion(criterion, profile)) {
-      passed.push(criterion.label);
-      passedHindi.push(criterion.labelHindi);
+      passed.push(criterion.label || String(criterion.field));
+      passedHindi.push(criterion.labelHindi || criterion.label || String(criterion.field));
     } else {
-      failed.push(criterion.label);
-      failedHindi.push(criterion.labelHindi);
+      failed.push(criterion.label || String(criterion.field));
+      failedHindi.push(criterion.labelHindi || criterion.label || String(criterion.field));
     }
   }
 

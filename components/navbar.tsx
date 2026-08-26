@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useLanguage } from '@/lib/language-context';
 import { useAuth } from '@/lib/auth-context';
+import { NotificationsCenter } from '@/components/notifications-center';
 import { SUPPORTED_LANGUAGES, type Language } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -129,6 +130,8 @@ export function Navbar() {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              {user && <NotificationsCenter />}
 
               {user ? (
                 <DropdownMenu>

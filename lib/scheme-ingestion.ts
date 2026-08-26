@@ -1,4 +1,5 @@
-import { supabase } from './supabase-client';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { supabaseBrowser } from './supabase-browser';
 import { mockSchemes } from './mock-data';
 import { SCHEME_RULES } from './scheme-eligibility';
 import type { Scheme } from './types';
@@ -15,6 +16,8 @@ export interface IngestedGovSchemePayload {
   category?: Scheme['category'];
   eligibility_tags?: string[];
   rules?: any[];
+  source_url?: string;
+  last_verified_at?: string;
 }
 
 const VALID_CATEGORIES: Scheme['category'][] = ['Finance', 'Health', 'Housing', 'Food', 'Education', 'Women'];
@@ -24,8 +27,10 @@ const VALID_CATEGORIES: Scheme['category'][] = ['Finance', 'Health', 'Housing', 
  * and upserts them into the Supabase `schemes` table.
  */
 export async function syncGovernmentSchemesData(
-  externalPayloads: IngestedGovSchemePayload[] = []
+  externalPayloads: IngestedGovSchemePayload[] = [],
+  client?: SupabaseClient
 ): Promise<{ success: boolean; count: number; error?: string }> {
+  const supabase = client || supabaseBrowser;
   try {
     const recordsToSync = mockSchemes.map((s) => {
       const matchedRule = SCHEME_RULES.find((r) => r.schemeId === s.id);
@@ -48,6 +53,8 @@ export async function syncGovernmentSchemesData(
         eligibility_rules: matchedRule ? matchedRule.criteria : [],
         active: true,
         updated_at: new Date().toISOString(),
+        source_url: s.sourceUrl || `https://www.myscheme.gov.in/schemes/${s.id}`,
+        last_verified_at: s.lastVerifiedAt || new Date().toISOString(),
       };
     });
 
@@ -76,6 +83,8 @@ export async function syncGovernmentSchemesData(
           eligibility_rules: ext.rules || [],
           active: true,
           updated_at: new Date().toISOString(),
+          source_url: ext.source_url || `https://www.myscheme.gov.in/schemes/${ext.scheme_id}`,
+          last_verified_at: ext.last_verified_at || new Date().toISOString(),
         });
       }
     }

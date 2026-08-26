@@ -5,6 +5,7 @@ import { LanguageProvider } from '@/lib/language-context';
 import { AuthProvider } from '@/lib/auth-context';
 import { FloatingAssistant } from '@/components/floating-assistant';
 import { PWAProvider } from '@/components/pwa-provider';
+import { AccessibilityProvider } from '@/lib/accessibility-context';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -45,14 +46,16 @@ export default function RootLayout({
         {/* manifest injected automatically by Next.js metadata.manifest */}
       </head>
       <body className={`${inter.variable} font-sans`}>
-        <LanguageProvider>
-          <AuthProvider>
-            <PWAProvider>
-              {children}
-              <FloatingAssistant />
-            </PWAProvider>
-          </AuthProvider>
-        </LanguageProvider>
+        <AccessibilityProvider>
+          <LanguageProvider>
+            <AuthProvider>
+              <PWAProvider>
+                {children}
+                <FloatingAssistant />
+              </PWAProvider>
+            </AuthProvider>
+          </LanguageProvider>
+        </AccessibilityProvider>
       </body>
     </html>
   );

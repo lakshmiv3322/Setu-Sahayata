@@ -26,7 +26,7 @@ import { Navbar } from '@/components/navbar';
 import { useLanguage } from '@/lib/language-context';
 import { useAuth } from '@/lib/auth-context';
 import { useRequireAuth } from '@/lib/use-require-auth';
-import { supabase } from '@/lib/supabase-client';
+import { supabaseBrowser as supabase } from '@/lib/supabase-browser';
 
 interface ApplicationTelemetry {
   id: string;

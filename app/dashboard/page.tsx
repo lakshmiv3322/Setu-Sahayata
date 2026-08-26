@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -26,6 +27,9 @@ import {
   ChevronUp,
   AlertTriangle,
   Bell,
+  Loader2,
+  X,
+  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -36,8 +40,9 @@ import { useLanguage } from '@/lib/language-context';
 import { useAuth } from '@/lib/auth-context';
 import { useRequireAuth } from '@/lib/use-require-auth';
 import { mockSchemes, mockAssistanceCenters } from '@/lib/mock-data';
-import { supabase } from '@/lib/supabase-client';
-import { rankSchemes, type StoredProfile } from '@/lib/match-schemes';
+import { supabaseBrowser as supabase } from '@/lib/supabase-browser';
+import { rankSchemes, computeMatchPercent, type StoredProfile } from '@/lib/match-schemes';
+import { logAuditEvent } from '@/lib/audit-logger';
 import type { Scheme } from '@/lib/types';
 import { useVoiceAssistant } from '@/hooks/use-voice-assistant';
 import { evaluateLifeEventTriggers, type SchemeTriggerAlert } from '@/lib/life-events';
@@ -70,11 +75,59 @@ interface ApplicationRow {
   submitted_at: string;
 }
 
+function transformDbScheme(record: any): Scheme {
+  return {
+    id: record.id,
+    name: record.name,
+    nameHindi: record.name_hindi || record.name,
+    ministry: record.ministry || 'Government of India',
+    ministryHindi: record.ministry_hindi || 'भारत सरकार',
+    benefit: record.benefit || '',
+    benefitHindi: record.benefit_hindi || record.benefit || '',
+    benefitAmount: record.benefit_amount || 'Varies',
+    matchPercent: 0,
+    timeToApply: record.time_to_apply || '10 minutes',
+    timeToApplyHindi: record.time_to_apply_hindi || '10 मिनट',
+    description: record.description || '',
+    descriptionHindi: record.description_hindi || record.description || '',
+    category: record.category || 'Finance',
+    icon: record.icon || 'Landmark',
+    eligibilityTags: record.eligibility_tags || [],
+    eligibilityRules: record.eligibility_rules || [],
+    sourceUrl: record.source_url || undefined,
+    lastVerifiedAt: record.last_verified_at || undefined,
+  };
+}
+
 export default function DashboardPage() {
   useRequireAuth();
   const { user } = useAuth();
   const { t, isHindi } = useLanguage();
   const { isSpeaking, speak, stopSpeaking } = useVoiceAssistant();
+  const searchParams = useSearchParams();
+
+  // Show access-denied toast when redirected from /admin by middleware
+  useEffect(() => {
+    if (searchParams.get('toast') === 'access_denied') {
+      // Use the sonner toast — it's already wired in layout.tsx
+      import('sonner').then(({ toast }) => {
+        toast.error(
+          t('Access Restricted', 'पहुंच प्रतिबंधित'),
+          {
+            description: t(
+              'The admin dashboard requires verified administrator credentials.',
+              'व्यवस्थापक डैशबोर्ड के लिए सत्यापित प्रशासक क्रेडेंशियल आवश्यक हैं।'
+            ),
+            duration: 6000,
+          }
+        );
+      });
+      // Clean the query param from the URL without a full navigation
+      const url = new URL(window.location.href);
+      url.searchParams.delete('toast');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [searchParams, t]);
 
   const [search, setSearch] = useState('');
   const [profile, setProfile] = useState<StoredProfile | null>(null);
@@ -82,6 +135,123 @@ export default function DashboardPage() {
   const [schemes, setSchemes] = useState<Scheme[]>(mockSchemes);
   const [triggerAlerts, setTriggerAlerts] = useState<SchemeTriggerAlert[]>([]);
   const [expandedExplanation, setExpandedExplanation] = useState<Record<string, boolean>>({});
+  const [appealData, setAppealData] = useState<Record<string, {
+    explanation?: string;
+    explanationHindi?: string;
+    appealLetter?: string;
+    appealLetterHindi?: string;
+    cpgramsUrl?: string;
+    loading?: boolean;
+    error?: string;
+  }>>({});
+
+  // Outcome Modal & Community Signal States
+  const [isOutcomeModalOpen, setIsOutcomeModalOpen] = useState(false);
+  const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
+  const [selectedSchemeId, setSelectedSchemeId] = useState<string | null>(null);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [outcomes, setOutcomes] = useState<Record<string, { success: number; rejected: number; pending: number }>>({});
+
+  const fetchOutcomes = useCallback(async () => {
+    try {
+      const { data } = await supabase
+        .from('application_outcomes')
+        .select('scheme_id, outcome');
+
+      if (data) {
+        const counts: Record<string, { success: number; rejected: number; pending: number }> = {};
+        for (const row of data) {
+          if (!counts[row.scheme_id]) {
+            counts[row.scheme_id] = { success: 0, rejected: 0, pending: 0 };
+          }
+          if (row.outcome === 'Success') counts[row.scheme_id].success++;
+          else if (row.outcome === 'Rejected') counts[row.scheme_id].rejected++;
+          else if (row.outcome === 'Pending') counts[row.scheme_id].pending++;
+        }
+        setOutcomes(counts);
+      }
+    } catch (err) {
+      console.error('Error fetching outcomes:', err);
+    }
+  }, []);
+
+  const handleOpenOutcomeModal = (appId: string, schemeId: string) => {
+    setSelectedAppId(appId);
+    setSelectedSchemeId(schemeId);
+    setIsOutcomeModalOpen(true);
+  };
+
+  const handleReportOutcome = async (outcome: 'Success' | 'Rejected' | 'Pending') => {
+    if (!selectedAppId || !selectedSchemeId || !user) return;
+    setUpdatingStatus(true);
+    try {
+      const statusText = outcome === 'Success' ? 'Approved' : outcome === 'Rejected' ? 'Rejected' : 'Pending';
+      const { error: appErr } = await supabase
+        .from('applications')
+        .update({ status: statusText })
+        .eq('id', selectedAppId);
+
+      if (appErr) throw appErr;
+
+      const { error: outErr } = await supabase
+        .from('application_outcomes')
+        .insert({
+          scheme_id: selectedSchemeId,
+          outcome: outcome
+        });
+
+      if (outErr) throw outErr;
+
+      await logAuditEvent('APPLICATION_OUTCOME_REPORTED', {
+        scheme_id: selectedSchemeId,
+        outcome: outcome
+      });
+
+      const { data: appsData } = await supabase
+        .from('applications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('submitted_at', { ascending: false });
+
+      if (appsData) {
+        setApplications(appsData as ApplicationRow[]);
+      }
+
+      await fetchOutcomes();
+      setIsOutcomeModalOpen(false);
+      setSelectedAppId(null);
+      setSelectedSchemeId(null);
+    } catch (err) {
+      console.error('Error reporting outcome:', err);
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const handleRequestAppeal = async (schemeId: string, schemeName: string, failedCriteria: string[]) => {
+    setAppealData((prev) => ({ ...prev, [schemeId]: { ...prev[schemeId], loading: true, error: undefined } }));
+    try {
+      const res = await fetch('/api/appeal-guidance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ schemeId, schemeName, failedCriteria }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        setAppealData((prev) => ({
+          ...prev,
+          [schemeId]: { loading: false, error: data.error || 'Failed to generate appeal guidance.' },
+        }));
+        return;
+      }
+      setAppealData((prev) => ({ ...prev, [schemeId]: { ...data, loading: false } }));
+    } catch {
+      setAppealData((prev) => ({
+        ...prev,
+        [schemeId]: { loading: false, error: 'Network error generating appeal guidance.' },
+      }));
+    }
+  };
 
   const userDisplayName =
     (user?.user_metadata?.full_name as string) ||
@@ -117,9 +287,32 @@ export default function DashboardPage() {
   }, [user]);
 
   useEffect(() => {
-    setSchemes(rankSchemes(mockSchemes, profile));
+    const loadSchemes = async () => {
+      try {
+        console.log('[Server/Client Render Branch] Querying schemes from Supabase database...');
+        const { data: dbSchemes } = await supabase
+          .from('schemes')
+          .select('*')
+          .eq('active', true);
+
+        let baseSchemes: Scheme[] = mockSchemes;
+        if (dbSchemes && dbSchemes.length > 0) {
+          console.log('[Server/Client Render Branch] Database schemes successfully loaded: count =', dbSchemes.length);
+          baseSchemes = dbSchemes.map(transformDbScheme);
+        } else {
+          console.log('[Server/Client Render Branch] No schemes returned from database, using mockSchemes fallback.');
+        }
+        setSchemes(rankSchemes(baseSchemes, profile));
+      } catch (err: any) {
+        console.error('[Server/Client Render Branch] Error loading schemes from database, using mockSchemes fallback:', err?.message || err);
+        setSchemes(rankSchemes(mockSchemes, profile));
+      }
+    };
+
+    loadSchemes();
+    fetchOutcomes();
     setTriggerAlerts(evaluateLifeEventTriggers(profile));
-  }, [profile]);
+  }, [profile, fetchOutcomes]);
 
   const filteredSchemes = schemes.filter((s) =>
     isHindi
@@ -208,7 +401,7 @@ export default function DashboardPage() {
           >
             <div className="flex items-center gap-2 text-sm font-bold text-trust-900">
               <Bell className="h-4 w-4 text-saffron-600 animate-bounce" />
-              <span>{t('Personalized Milestone & Deadline Alerts', 'व्यक्तिगत मील के पत्थर और समय-सीमा चेतावनी')}</span>
+              <span>{t('Personalized Milestone Alerts', 'व्यक्तिगत मील के पत्थर की चेतावनी')}</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {triggerAlerts.map((alert) => (
@@ -229,11 +422,6 @@ export default function DashboardPage() {
                       <span className="font-bold text-sm text-trust-900">
                         {isHindi ? alert.schemeNameHindi : alert.schemeName}
                       </span>
-                      {alert.daysRemaining !== undefined && (
-                        <Badge className="bg-rose-500 text-white text-[10px]">
-                          {alert.daysRemaining} {t('Days Left', 'दिन शेष')}
-                        </Badge>
-                      )}
                     </div>
                     <p className="text-xs text-trust-800">
                       {isHindi ? alert.triggerReasonHindi : alert.triggerReason}
@@ -325,10 +513,10 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <h2 className="text-xl font-bold text-trust-900">
-                      {t('Your Applications', 'आपके आवेदन')}
+                      {t('Your Application Kits', 'आपके आवेदन किट')}
                     </h2>
                     <p className="text-sm text-muted-foreground">
-                      {t('Track the status of your submitted applications', 'अपने जमा किए गए आवेदनों की स्थिति ट्रैक करें')}
+                      {t('Track and manage your prepared application kits', 'अपने तैयार किए गए आवेदन किट का प्रबंधन करें')}
                     </p>
                   </div>
                 </div>
@@ -355,7 +543,21 @@ export default function DashboardPage() {
                       {app.benefit_amount && (
                         <Badge className="bg-emerald-50 text-emerald-700">{app.benefit_amount}</Badge>
                       )}
-                      <Badge className="bg-trust-50 text-trust-700">{app.status}</Badge>
+                      <Badge className="bg-trust-50 text-trust-700">
+                        {app.status === 'Prepared' || app.status === 'Submitted'
+                          ? t('Ready to File', 'जमा करने हेतु तैयार')
+                          : app.status}
+                      </Badge>
+                      {(app.status === 'Prepared' || app.status === 'Submitted') && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs border-trust-200 hover:bg-trust-50 text-trust-700"
+                          onClick={() => handleOpenOutcomeModal(app.id, app.scheme_id)}
+                        >
+                          {t('Mark as Filed', 'दाखिल चिह्नित करें')}
+                        </Button>
+                      )}
                     </div>
                   </motion.div>
                 ))}
@@ -456,6 +658,87 @@ export default function DashboardPage() {
                         ))}
                       </div>
 
+                      {/* Provenance & Last Verified */}
+                      {(scheme.sourceUrl || scheme.lastVerifiedAt) && (
+                        <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground border-t border-trust-50 pt-2">
+                          {scheme.sourceUrl ? (
+                            <a
+                              href={scheme.sourceUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-trust-600 hover:underline flex items-center gap-1 font-medium"
+                            >
+                              {t('Source: myScheme.gov.in', 'स्रोत: myScheme.gov.in')}
+                            </a>
+                          ) : (
+                            <span>{t('Source: Internal', 'स्रोत: आंतरिक')}</span>
+                          )}
+                          {scheme.lastVerifiedAt && (
+                            <span>
+                              {t('Verified: ', 'सत्यापित: ')}
+                              {new Date(scheme.lastVerifiedAt).toLocaleDateString(isHindi ? 'hi-IN' : 'en-IN')}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Family Eligibility Matches */}
+                      {profile?.family_members && profile.family_members.length > 0 && (
+                        <div className="mt-3 border-t border-trust-50 pt-2">
+                          <div className="text-[11px] font-semibold text-trust-800 mb-1.5 uppercase tracking-wider">
+                            {t('Family Member Matches', 'परिवार के सदस्य मिलान')}
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                            {profile.family_members.map((member: any) => {
+                              const memberProfile = {
+                                income: member.income,
+                                category: profile?.category || 'General',
+                                occupation: member.occupation,
+                                state: profile?.state || '',
+                                has_aadhaar: member.has_aadhaar,
+                                has_ration_card: member.has_ration_card,
+                                has_udyam: member.has_udyam,
+                                gender: member.gender,
+                              };
+                              const match = computeMatchPercent(scheme, memberProfile);
+                              const isEligible = match >= 70;
+                              return (
+                                <div key={member.id} className="flex items-center justify-between p-1.5 bg-trust-50/30 rounded-lg border border-trust-100/50 text-[10px]">
+                                  <span className="font-medium text-trust-900">
+                                    {member.name} ({t(member.relation, member.relation)})
+                                  </span>
+                                  <Badge className={`text-[9px] px-1 py-0 border-0 ${
+                                    isEligible ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50/80 text-rose-700'
+                                  }`}>
+                                    {match}% {isEligible ? t('Eligible', 'पात्र') : t('Not Eligible', 'अपात्र')}
+                                  </Badge>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Community Signal Badge */}
+                      {(() => {
+                        const count = outcomes[scheme.id] || { success: 0, rejected: 0, pending: 0 };
+                        if (count.success > 0 || count.rejected > 0 || count.pending > 0) {
+                          return (
+                            <div className="mt-3 flex items-center gap-1.5 text-[11px] text-trust-800 bg-trust-50/50 rounded-lg p-2 border border-trust-100">
+                              <span className="font-semibold text-trust-700">👥 {t('Community Signal:', 'सामुदायिक संकेत:')}</span>
+                              <span className="font-medium">
+                                {count.success > 0 && `${count.success} ${t('Successes', 'सफलताएं')}`}
+                                {count.success > 0 && (count.rejected > 0 || count.pending > 0) && ', '}
+                                {count.rejected > 0 && `${count.rejected} ${t('Rejections', 'अस्वीकार')}`}
+                                {count.rejected > 0 && count.pending > 0 && ', '}
+                                {count.pending > 0 && `${count.pending} ${t('Pending', 'लंबित')}`}
+                              </span>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+
                       {/* Match Explanation Toggle */}
                       {explanation && (explanation.passed.length > 0 || explanation.failed.length > 0) && (
                         <div className="mt-4 border-t border-trust-100 pt-3">
@@ -488,6 +771,24 @@ export default function DashboardPage() {
                                     <span>{item}</span>
                                   </div>
                                 ))}
+
+                                {explanation.failed.length > 0 && (
+                                  <div className="mt-3 pt-2 border-t border-trust-100 flex flex-col gap-2">
+                                    <Link
+                                      href={`/appeal?schemeId=${encodeURIComponent(scheme.id)}&schemeName=${encodeURIComponent(isHindi ? scheme.nameHindi : scheme.name)}&failedCriteria=${encodeURIComponent(JSON.stringify(explanation.failed))}`}
+                                      className="w-full"
+                                    >
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="w-full text-xs gap-1.5 border-rose-200 text-rose-700 hover:bg-rose-50"
+                                      >
+                                        <AlertTriangle className="h-3.5 w-3.5" />
+                                        {t('Open Full Appeal Assistant & CPGRAMS Letter', 'अपील सहायक और CPGRAMS पत्र खोलें')}
+                                      </Button>
+                                    </Link>
+                                  </div>
+                                )}
                               </motion.div>
                             )}
                           </AnimatePresence>
@@ -586,6 +887,74 @@ export default function DashboardPage() {
           </Card>
         </motion.div>
       </div>
+
+      {/* Outcome Modal */}
+      <AnimatePresence>
+        {isOutcomeModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="w-full max-w-md overflow-hidden rounded-2xl border border-trust-100 bg-white p-6 shadow-2xl space-y-4"
+            >
+              <div className="flex items-center justify-between border-b border-trust-50 pb-3">
+                <h3 className="text-lg font-bold text-trust-900">
+                  {t('Report Application Outcome', 'आवेदन परिणाम रिपोर्ट करें')}
+                </h3>
+                <button
+                  onClick={() => {
+                    setIsOutcomeModalOpen(false);
+                    setSelectedAppId(null);
+                    setSelectedSchemeId(null);
+                  }}
+                  className="rounded-lg p-1 text-muted-foreground hover:bg-trust-50 hover:text-trust-900 transition-all"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {t(
+                    'Was your application approved? Did this scheme work for you? Your response is completely anonymous and helps other citizens gauge success rates.',
+                    'क्या आपका आवेदन स्वीकृत हुआ? क्या यह योजना आपके लिए काम कर पाई? आपकी प्रतिक्रिया पूरी तरह से गुमनाम है और अन्य नागरिकों को सफलता दर जानने में मदद करती है।'
+                  )}
+                </p>
+                
+                <div className="flex flex-col gap-2 pt-2">
+                  <Button
+                    disabled={updatingStatus}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+                    onClick={() => handleReportOutcome('Success')}
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    {t('Yes, it was Approved / Successful', 'हाँ, यह स्वीकृत / सफल रहा')}
+                  </Button>
+                  <Button
+                    disabled={updatingStatus}
+                    variant="outline"
+                    className="w-full border-rose-200 text-rose-700 hover:bg-rose-50 gap-2"
+                    onClick={() => handleReportOutcome('Rejected')}
+                  >
+                    <XCircle className="h-4 w-4" />
+                    {t('No, it was Rejected', 'नहीं, इसे अस्वीकार कर दिया गया')}
+                  </Button>
+                  <Button
+                    disabled={updatingStatus}
+                    variant="secondary"
+                    className="w-full bg-trust-50 hover:bg-trust-100 text-trust-800 gap-2"
+                    onClick={() => handleReportOutcome('Pending')}
+                  >
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {t('It is still Pending / In Progress', 'यह अभी भी लंबित / प्रक्रिया में है')}
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

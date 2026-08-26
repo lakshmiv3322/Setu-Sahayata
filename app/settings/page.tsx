@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShieldCheck,
   Trash2,
@@ -13,6 +13,10 @@ import {
   ArrowLeft,
   FileText,
   UserX,
+  Eye,
+  Plus,
+  X,
+  Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -21,8 +25,9 @@ import { Navbar } from '@/components/navbar';
 import { useLanguage } from '@/lib/language-context';
 import { useAuth } from '@/lib/auth-context';
 import { useRequireAuth } from '@/lib/use-require-auth';
-import { supabase } from '@/lib/supabase-client';
+import { supabaseBrowser as supabase } from '@/lib/supabase-browser';
 import { logAuditEvent } from '@/lib/audit-logger';
+import { AccessibilityModeSelector } from '@/components/accessibility-mode-selector';
 
 interface AuditLogRow {
   id: string;
@@ -41,6 +46,22 @@ export default function SettingsPage() {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Household Management States
+  const [profile, setProfile] = useState<any>(null);
+  const [familyMembers, setFamilyMembers] = useState<any[]>([]);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newMemberName, setNewMemberName] = useState('');
+  const [newMemberAge, setNewMemberAge] = useState('');
+  const [newMemberGender, setNewMemberGender] = useState('Female');
+  const [newMemberRelation, setNewMemberRelation] = useState('Son');
+  const [newMemberIncome, setNewMemberIncome] = useState('');
+  const [newMemberOccupation, setNewMemberOccupation] = useState('');
+  const [newMemberAadhaar, setNewMemberAadhaar] = useState(false);
+  const [newMemberRation, setNewMemberRation] = useState(false);
+  const [newMemberUdyam, setNewMemberUdyam] = useState(false);
+
   useEffect(() => {
     if (!user) return;
     const fetchLogs = async () => {
@@ -53,8 +74,93 @@ export default function SettingsPage() {
 
       if (data) setAuditLogs(data as AuditLogRow[]);
     };
+
+    const fetchUserData = async () => {
+      setLoadingProfile(true);
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (data) {
+        setProfile(data);
+        setFamilyMembers(data.family_members || []);
+      }
+      setLoadingProfile(false);
+    };
+
     fetchLogs();
+    fetchUserData();
   }, [user]);
+
+  const saveFamilyMembers = async (newMembers: any[]) => {
+    if (!user) return;
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .upsert(
+          {
+            user_id: user.id,
+            name: profile?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User',
+            family_members: newMembers,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id' }
+        );
+
+      if (error) {
+        console.error('Error saving family members:', error);
+      } else {
+        setFamilyMembers(newMembers);
+        setProfile((prev: any) => ({ ...prev, family_members: newMembers }));
+        await logAuditEvent('PROFILE_UPDATED', {
+          action: 'FAMILY_MEMBERS_UPDATED',
+          family_members_count: newMembers.length,
+        });
+      }
+    } catch (err) {
+      console.error('Error in saveFamilyMembers:', err);
+    }
+  };
+
+  const handleAddMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMemberName.trim() || !newMemberAge) return;
+
+    const newMember = {
+      id: Math.random().toString(36).substring(2, 9),
+      name: newMemberName.trim(),
+      age: parseInt(newMemberAge) || 0,
+      gender: newMemberGender,
+      relation: newMemberRelation,
+      income: parseInt(newMemberIncome) || 0,
+      occupation: newMemberOccupation.trim() || 'Unemployed',
+      has_aadhaar: newMemberAadhaar,
+      has_ration_card: newMemberRation,
+      has_udyam: newMemberUdyam,
+    };
+
+    const updated = [...familyMembers, newMember];
+    await saveFamilyMembers(updated);
+    
+    // reset form
+    setNewMemberName('');
+    setNewMemberAge('');
+    setNewMemberGender('Female');
+    setNewMemberRelation('Son');
+    setNewMemberIncome('');
+    setNewMemberOccupation('');
+    setNewMemberAadhaar(false);
+    setNewMemberRation(false);
+    setNewMemberUdyam(false);
+    setIsAddModalOpen(false);
+  };
+
+  const handleDeleteMember = async (id: string) => {
+    const updated = familyMembers.filter((m) => m.id !== id);
+    await saveFamilyMembers(updated);
+  };
 
   const handleDeleteAllData = async () => {
     if (!user) return;
@@ -114,6 +220,283 @@ export default function SettingsPage() {
         </motion.div>
 
         <div className="space-y-6">
+          {/* Household & Family Members Card */}
+          <Card className="border-trust-100 bg-white p-6 shadow-md">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2 text-trust-900 font-bold">
+                <Users className="h-5 w-5 text-trust-600" />
+                <h2>{t('Household & Family Members', 'परिवार के सदस्य')}</h2>
+              </div>
+              <Button
+                onClick={() => setIsAddModalOpen(true)}
+                size="sm"
+                className="bg-trust-600 hover:bg-trust-700 text-white gap-1"
+              >
+                <Plus className="h-4 w-4" />
+                {t('Add Member', 'सदस्य जोड़ें')}
+              </Button>
+            </div>
+            
+            <p className="text-xs text-muted-foreground mb-4">
+              {t(
+                'Add family members to check their eligibility for government welfare schemes.',
+                'कल्याणकारी योजनाओं के लिए उनकी पात्रता की जांच करने के लिए परिवार के सदस्यों को जोड़ें।'
+              )}
+            </p>
+
+            {loadingProfile ? (
+              <div className="flex justify-center p-4">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-trust-600"></div>
+              </div>
+            ) : familyMembers.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {familyMembers.map((member) => (
+                  <div key={member.id} className="relative rounded-xl border border-trust-100 bg-trust-50/20 p-4 space-y-2 hover:shadow-sm transition-all">
+                    <button
+                      onClick={() => handleDeleteMember(member.id)}
+                      className="absolute right-3 top-3 text-muted-foreground hover:text-rose-600 transition-colors p-1"
+                      title={t('Delete Member', 'सदस्य हटाएं')}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                    <div>
+                      <h4 className="font-bold text-trust-900 text-sm">{member.name}</h4>
+                      <p className="text-xs text-muted-foreground">
+                        {t(member.relation, member.relation)} • {member.age} {t('yrs', 'वर्ष')} • {t(member.gender, member.gender)}
+                      </p>
+                    </div>
+                    <div className="text-xs space-y-1 text-trust-800">
+                      <div>
+                        <span className="text-muted-foreground">{t('Income:', 'आय:')}</span> ₹{member.income?.toLocaleString(isHindi ? 'hi-IN' : 'en-IN')}/yr
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">{t('Occupation:', 'व्यवसाय:')}</span> {member.occupation}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {member.has_aadhaar && (
+                        <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] px-1.5 py-0.5">
+                          {t('Aadhaar', 'आधार')}
+                        </Badge>
+                      )}
+                      {member.has_ration_card && (
+                        <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] px-1.5 py-0.5">
+                          {t('Ration', 'राशन')}
+                        </Badge>
+                      )}
+                      {member.has_udyam && (
+                        <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] px-1.5 py-0.5">
+                          {t('Udyam', 'उद्यम')}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs italic text-muted-foreground py-4 text-center">
+                {t('No family members added yet.', 'अभी तक परिवार का कोई सदस्य नहीं जोड़ा गया है।')}
+              </p>
+            )}
+          </Card>
+
+          {/* Modal using Framer Motion */}
+          <AnimatePresence>
+            {isAddModalOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  className="w-full max-w-lg overflow-hidden rounded-2xl border border-trust-100 bg-white p-6 shadow-2xl space-y-4"
+                >
+                  <div className="flex items-center justify-between border-b border-trust-50 pb-3">
+                    <h3 className="text-lg font-bold text-trust-900">
+                      {t('Add Family Member', 'परिवार का सदस्य जोड़ें')}
+                    </h3>
+                    <button
+                      onClick={() => setIsAddModalOpen(false)}
+                      className="rounded-lg p-1 text-muted-foreground hover:bg-trust-50 hover:text-trust-900 transition-all"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleAddMember} className="space-y-4 text-sm">
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Name */}
+                      <div className="col-span-2">
+                        <label className="block text-xs font-semibold text-trust-800 mb-1">
+                          {t('Full Name', 'पूरा नाम')}
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={newMemberName}
+                          onChange={(e) => setNewMemberName(e.target.value)}
+                          placeholder={t('e.g. Ramesh Kumar', 'जैसे: रमेश कुमार')}
+                          className="w-full rounded-xl border border-trust-200 px-4 py-2.5 outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20"
+                        />
+                      </div>
+
+                      {/* Age */}
+                      <div>
+                        <label className="block text-xs font-semibold text-trust-800 mb-1">
+                          {t('Age', 'उम्र')}
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          value={newMemberAge}
+                          onChange={(e) => setNewMemberAge(e.target.value)}
+                          placeholder={t('e.g. 15', 'जैसे: 15')}
+                          className="w-full rounded-xl border border-trust-200 px-4 py-2.5 outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20"
+                        />
+                      </div>
+
+                      {/* Gender */}
+                      <div>
+                        <label className="block text-xs font-semibold text-trust-800 mb-1">
+                          {t('Gender', 'लिंग')}
+                        </label>
+                        <select
+                          value={newMemberGender}
+                          onChange={(e) => setNewMemberGender(e.target.value)}
+                          className="w-full rounded-xl border border-trust-200 px-4 py-2.5 bg-white outline-none focus:border-trust-500"
+                        >
+                          <option value="Female">{t('Female', 'महिला')}</option>
+                          <option value="Male">{t('Male', 'पुरुष')}</option>
+                          <option value="Other">{t('Other', 'अन्य')}</option>
+                        </select>
+                      </div>
+
+                      {/* Relation */}
+                      <div>
+                        <label className="block text-xs font-semibold text-trust-800 mb-1">
+                          {t('Relation', 'संबंध')}
+                        </label>
+                        <select
+                          value={newMemberRelation}
+                          onChange={(e) => setNewMemberRelation(e.target.value)}
+                          className="w-full rounded-xl border border-trust-200 px-4 py-2.5 bg-white outline-none focus:border-trust-500"
+                        >
+                          <option value="Spouse">{t('Spouse', 'जीवनसाथी')}</option>
+                          <option value="Son">{t('Son', 'बेटा')}</option>
+                          <option value="Daughter">{t('Daughter', 'बेटी')}</option>
+                          <option value="Mother">{t('Mother', 'माता')}</option>
+                          <option value="Father">{t('Father', 'पिता')}</option>
+                          <option value="Brother">{t('Brother', 'भाई')}</option>
+                          <option value="Sister">{t('Sister', 'बहन')}</option>
+                          <option value="Other">{t('Other', 'अन्य')}</option>
+                        </select>
+                      </div>
+
+                      {/* Income */}
+                      <div>
+                        <label className="block text-xs font-semibold text-trust-800 mb-1">
+                          {t('Annual Income (₹)', 'वार्षिक आय (₹)')}
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          value={newMemberIncome}
+                          onChange={(e) => setNewMemberIncome(e.target.value)}
+                          placeholder={t('e.g. 50000', 'जैसे: 50000')}
+                          className="w-full rounded-xl border border-trust-200 px-4 py-2.5 outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20"
+                        />
+                      </div>
+
+                      {/* Occupation */}
+                      <div className="col-span-2">
+                        <label className="block text-xs font-semibold text-trust-800 mb-1">
+                          {t('Occupation', 'व्यवसाय')}
+                        </label>
+                        <input
+                          type="text"
+                          value={newMemberOccupation}
+                          onChange={(e) => setNewMemberOccupation(e.target.value)}
+                          placeholder={t('e.g. Student, Tailor', 'जैसे: छात्र, दर्जी')}
+                          className="w-full rounded-xl border border-trust-200 px-4 py-2.5 outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Status switches (checkboxes) */}
+                    <div className="border-t border-trust-50 pt-3 space-y-2">
+                      <label className="block text-xs font-bold text-trust-900 uppercase tracking-wider mb-2">
+                        {t('Document / Registration Status', 'दस्तावेज़ / पंजीकरण स्थिति')}
+                      </label>
+                      <div className="grid grid-cols-3 gap-3">
+                        <label className="flex items-center gap-2 p-2.5 rounded-xl border border-trust-100 bg-trust-50/20 hover:bg-trust-50 transition-all cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={newMemberAadhaar}
+                            onChange={(e) => setNewMemberAadhaar(e.target.checked)}
+                            className="rounded border-trust-200 text-trust-600 focus:ring-trust-500 h-4 w-4"
+                          />
+                          <span className="text-xs font-medium text-trust-800">{t('Aadhaar', 'आधार')}</span>
+                        </label>
+
+                        <label className="flex items-center gap-2 p-2.5 rounded-xl border border-trust-100 bg-trust-50/20 hover:bg-trust-50 transition-all cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={newMemberRation}
+                            onChange={(e) => setNewMemberRation(e.target.checked)}
+                            className="rounded border-trust-200 text-trust-600 focus:ring-trust-500 h-4 w-4"
+                          />
+                          <span className="text-xs font-medium text-trust-800">{t('Ration', 'राशन')}</span>
+                        </label>
+
+                        <label className="flex items-center gap-2 p-2.5 rounded-xl border border-trust-100 bg-trust-50/20 hover:bg-trust-50 transition-all cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={newMemberUdyam}
+                            onChange={(e) => setNewMemberUdyam(e.target.checked)}
+                            className="rounded border-trust-200 text-trust-600 focus:ring-trust-500 h-4 w-4"
+                          />
+                          <span className="text-xs font-medium text-trust-800">{t('Udyam', 'उद्यम')}</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-3 pt-3 border-t border-trust-50">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => setIsAddModalOpen(false)}
+                      >
+                        {t('Cancel', 'रद्द करें')}
+                      </Button>
+                      <Button
+                        type="submit"
+                        className="flex-1 bg-trust-600 hover:bg-trust-700 text-white"
+                      >
+                        {t('Add Member', 'सदस्य जोड़ें')}
+                      </Button>
+                    </div>
+                  </form>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+
+          {/* Accessibility Mode Card */}
+          <Card className="border-trust-100 bg-white p-6 shadow-md">
+            <div className="flex items-center gap-2 mb-4 text-trust-900 font-bold">
+              <Eye className="h-5 w-5 text-trust-600" />
+              <h2>{t('Accessibility & Display', 'पहुँच और प्रदर्शन')}</h2>
+            </div>
+            <p className="text-xs text-muted-foreground mb-4">
+              {t(
+                'Choose a display mode to improve readability based on your needs.',
+                'अपनी आवश्यकताओं के अनुसार पठनीयता सुधारने के लिए एक प्रदर्शन मोड चुनें।'
+              )}
+            </p>
+            <AccessibilityModeSelector />
+          </Card>
+
           {/* Data Retention & Privacy Policy Card */}
           <Card className="border-trust-100 bg-white p-6 shadow-md">
             <div className="flex items-center gap-2 mb-3 text-trust-900 font-bold">

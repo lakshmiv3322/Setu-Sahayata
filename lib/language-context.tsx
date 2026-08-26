@@ -6,11 +6,13 @@ import { SUPPORTED_LANGUAGES } from './types';
 
 export type TranslationMap = {
   en: string;
-  hi: string;
+  hi?: string;
   ta?: string;
   te?: string;
   bn?: string;
   mr?: string;
+  kn?: string;
+  [key: string]: string | undefined;
 };
 
 interface LanguageContextValue {
@@ -41,7 +43,9 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   const toggle = useCallback(() => {
     setLanguageState((prev) => {
-      const next: Language = prev === 'en' ? 'hi' : 'en';
+      const idx = SUPPORTED_LANGUAGES.findIndex((l) => l.code === prev);
+      const nextIndex = (idx + 1) % SUPPORTED_LANGUAGES.length;
+      const next = SUPPORTED_LANGUAGES[nextIndex].code;
       localStorage.setItem('setu_language', next);
       return next;
     });
@@ -50,17 +54,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const t = useCallback(
     (enOrMap: string | TranslationMap, fallbackHi?: string): string => {
       if (typeof enOrMap === 'object' && enOrMap !== null) {
-        return (
-          enOrMap[language] ||
-          enOrMap['hi'] ||
-          enOrMap['en'] ||
-          ''
-        );
+        return enOrMap[language] || enOrMap['hi'] || enOrMap['en'] || '';
       }
-      if (language === 'en') return enOrMap;
       if (language === 'hi' && fallbackHi) return fallbackHi;
-      // Fallback for regional languages when simple strings passed
-      return fallbackHi || enOrMap;
+      return enOrMap;
     },
     [language]
   );

@@ -1,4 +1,4 @@
-import { supabase } from './supabase-client';
+import { supabaseBrowser as supabase } from './supabase-browser';
 
 export type AuditAction =
   | 'PROFILE_CREATED'
@@ -6,6 +6,7 @@ export type AuditAction =
   | 'DOCUMENT_EXTRACTED'
   | 'CONSENT_GRANTED'
   | 'APPLICATION_SUBMITTED'
+  | 'APPLICATION_OUTCOME_REPORTED'
   | 'ACCOUNT_DELETED';
 
 /**
