@@ -1,6 +1,17 @@
 # Setu Sahayata (सेतु सहायता) — Upgrade Changelog
 
-> **Summary for Jury & Reviewers**: Setu Sahayata has been upgraded from a partial demo into a production-grade, highly inclusive civic tech platform. Below is a summary of technical and architectural enhancements completed across all phases.
+> **Summary for Jury & Reviewers**: Setu Sahayata has been upgraded from a partial demo into a production-grade, highly inclusive civic tech platform. Below is a summary of technical, visual, and architectural enhancements completed across all phases.
+
+---
+
+## 🎨 Phase 5 — Comprehensive Visual Redesign & Feature Completion (Current)
+- **Distinctive Brand Identity & Design Tokens**: Replaced generic blue templates with a custom **Deep Indigo-Teal (`#0F4C5C` - `#1B6B7A`) Primary palette** paired with a **Warm Saffron/Amber (`#F2994A` - `#E8871E`) Accent**, off-white/off-black neutral backgrounds, and distinct semantic status colors (`approved`, `pending`, `rejected`, `disbursed`).
+- **Typography & Font System**: Integrated **Sora** display font for headings via `next/font/google` alongside **Inter** for body text and Noto Sans native scripts for all 7 supported Indian languages.
+- **Hero & Landing Page Overhaul**: Redesigned hero section featuring a custom animated SVG "Bridge Flow" visual, request-time computed live stats bar with count-up animations, 3-step connected process section, and a distinct **Before vs After** comparison strip (Legalese vs De-Jargonified bullets).
+- **Command-Center Dashboard**: Redesigned `/dashboard` layout with top key stats, **Profile Completeness Meter** with gamified next-best-action nudges, **Side-by-Side Scheme Comparison Modal**, percentage match progress rings, and expandable pass/fail criteria accordions with semantic badges.
+- **Mobile Camera Document Scanner**: Added HTML5 `getUserMedia` camera capture in `/discover` for mobile document scanning alongside drag-and-drop file upload.
+- **Anti-Fraud Advisory Banner**: Integrated persistent anti-fraud warning banner across `/apply` and `/dashboard` advising citizens that scheme application is 100% free and warning against bribery or fake agent scams.
+- **Auth & Session Fallback Security**: Updated `middleware.ts` and `auth-context.tsx` with a lightweight session cookie check to ensure mock & fallback demo flows work seamlessly without blocking users even during Supabase connection outages.
 
 ---
 

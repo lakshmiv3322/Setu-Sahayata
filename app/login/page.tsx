@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
-import { Sparkles, Mail, Lock, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Sparkles, Mail, Lock, ArrowRight, Loader2, AlertCircle, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -38,14 +38,24 @@ export default function LoginPage() {
     }
   };
 
+  const fillPreset = (type: 'citizen' | 'admin') => {
+    if (type === 'citizen') {
+      setEmail('citizen.demo@setusahayata.in');
+      setPassword('Citizen@123');
+    } else {
+      setEmail('admin.demo@setusahayata.in');
+      setPassword('Admin@123');
+    }
+  };
+
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-b from-trust-50 via-white to-saffron-50/30 px-4">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-b from-setu-50 via-white to-saffron-50/30 px-4">
       {/* Decorative blobs */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <motion.div
           animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
           transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute -left-20 top-20 h-72 w-72 rounded-full bg-trust-200/40 blur-3xl"
+          className="absolute -left-20 top-20 h-72 w-72 rounded-full bg-setu-200/40 blur-3xl"
         />
         <motion.div
           animate={{ x: [0, -30, 0], y: [0, 20, 0] }}
@@ -64,17 +74,17 @@ export default function LoginPage() {
         <Link href="/" className="mb-8 flex items-center justify-center gap-2">
           <motion.div
             whileHover={{ rotate: 15, scale: 1.1 }}
-            className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-trust-500 to-trust-700 shadow-lg shadow-trust-500/30"
+            className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-setu-500 to-setu-700 shadow-lg shadow-setu-500/30"
           >
             <Sparkles className="h-5 w-5 text-white" />
           </motion.div>
-          <span className="text-xl font-bold tracking-tight text-trust-900">
+          <span className="text-xl font-bold tracking-tight text-setu-900">
             {t('Setu Sahayata', 'सेतु सहायता')}
           </span>
         </Link>
 
-        <Card className="border-trust-100 bg-white/80 p-8 shadow-xl backdrop-blur-xl">
-          <h1 className="text-2xl font-bold tracking-tight text-trust-900">
+        <Card className="border-setu-100 bg-white/80 p-8 shadow-xl backdrop-blur-xl">
+          <h1 className="text-2xl font-bold tracking-tight text-setu-900">
             {t('Welcome back', 'वापसी पर स्वागत है')}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -82,52 +92,53 @@ export default function LoginPage() {
           </p>
 
           {/* Quick Jury / Demo Preset Login Buttons */}
-          <div className="mt-4 rounded-xl border border-trust-100 bg-trust-50/60 p-3 space-y-2">
-            <span className="text-[11px] font-bold text-trust-800 uppercase tracking-wider block text-center">
-              ⚡ {t('Instant Jury & Demo Sign-In', 'त्वरित जूरी और डेमो साइन-इन')}
+          <div className="mt-4 rounded-xl border border-setu-100 bg-setu-50/60 p-3 space-y-2">
+            <span className="text-[11px] font-bold text-setu-800 uppercase tracking-wider flex items-center justify-center gap-1">
+              <Zap className="h-3 w-3 text-saffron-500" />
+              {t('Instant Demo Sign-In', 'त्वरित डेमो साइन-इन')}
             </span>
             <div className="grid grid-cols-2 gap-2">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  setEmail('citizen.demo@setusahayata.in');
-                  setPassword('Citizen@123');
-                }}
-                className="text-xs bg-white border-trust-200 hover:bg-trust-100 text-trust-900"
+                onClick={() => fillPreset('citizen')}
+                className="text-xs bg-white border-setu-200 hover:bg-setu-100 text-setu-900 gap-1"
               >
-                👤 Citizen Account
+                👤 Citizen
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  setEmail('admin.demo@setusahayata.in');
-                  setPassword('Admin@123');
-                }}
-                className="text-xs bg-white border-trust-200 hover:bg-trust-100 text-trust-900"
+                onClick={() => fillPreset('admin')}
+                className="text-xs bg-white border-setu-200 hover:bg-setu-100 text-setu-900 gap-1"
               >
-                🛡️ Admin Account
+                🛡️ Admin
               </Button>
             </div>
+            <p className="text-[10px] text-center text-muted-foreground">
+              {t('Click above, then Sign In — works even without Supabase', 'ऊपर क्लिक करें, फिर साइन इन — Supabase के बिना भी काम करता है')}
+            </p>
           </div>
 
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              className="mt-4 flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
-            >
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              {error}
-            </motion.div>
-          )}
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mt-4 flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+              >
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div>
-              <label className="mb-1.5 block text-sm font-semibold text-trust-800">
+              <label className="mb-1.5 block text-sm font-semibold text-setu-800">
                 {t('Email', 'ईमेल')}
               </label>
               <div className="relative">
@@ -138,13 +149,13 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="rounded-xl border-trust-200 pl-10"
+                  className="rounded-xl border-setu-200 pl-10 focus-visible:ring-setu-400"
                 />
               </div>
             </div>
 
             <div>
-              <label className="mb-1.5 block text-sm font-semibold text-trust-800">
+              <label className="mb-1.5 block text-sm font-semibold text-setu-800">
                 {t('Password', 'पासवर्ड')}
               </label>
               <div className="relative">
@@ -155,7 +166,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="rounded-xl border-trust-200 pl-10"
+                  className="rounded-xl border-setu-200 pl-10 focus-visible:ring-setu-400"
                 />
               </div>
             </div>
@@ -163,7 +174,7 @@ export default function LoginPage() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full gap-2 rounded-xl bg-trust-600 hover:bg-trust-700"
+              className="w-full gap-2 rounded-xl bg-setu-600 hover:bg-setu-700 active:scale-[0.98] transition-all shadow-md shadow-setu-500/20"
             >
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -178,7 +189,7 @@ export default function LoginPage() {
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             {t("Don't have an account?", 'खाता नहीं है?')}{' '}
-            <Link href="/signup" className="font-semibold text-trust-600 hover:text-trust-700">
+            <Link href="/signup" className="font-semibold text-setu-600 hover:text-setu-700">
               {t('Sign up', 'साइन अप')}
             </Link>
           </p>

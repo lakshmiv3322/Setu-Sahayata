@@ -65,18 +65,23 @@ export function Navbar() {
         transition={{ type: 'spring', stiffness: 100, damping: 20 }}
         className="fixed top-0 left-0 right-0 z-50"
       >
-        <div className="glass border-b border-white/40 shadow-sm">
+        <div className="glass border-b border-white/40 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/80">
           <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-            <Link href="/" className="flex items-center gap-2">
+            <Link href="/" className="flex items-center gap-2.5 group">
               <motion.div
                 whileHover={{ rotate: 15, scale: 1.1 }}
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-trust-500 to-trust-700 shadow-lg shadow-trust-500/30"
+                className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-setu-500 via-setu-600 to-setu-700 shadow-md shadow-setu-500/25"
               >
                 <Sparkles className="h-5 w-5 text-white" />
               </motion.div>
-              <span className="text-lg font-bold tracking-tight text-trust-900">
-                {t('Setu Sahayata', 'सेतु सहायता')}
-              </span>
+              <div className="flex flex-col">
+                <span className="font-display text-lg font-bold tracking-tight text-setu-950 dark:text-setu-50 group-hover:text-setu-600 transition-colors">
+                  {t('Setu Sahayata', 'सेतु सहायता')}
+                </span>
+                <span className="text-[10px] font-semibold text-saffron-600 dark:text-saffron-400 tracking-wider uppercase -mt-1">
+                  {t('Citizen Portal', 'नागरिक पोर्टल')}
+                </span>
+              </div>
             </Link>
 
             <nav className="hidden items-center gap-1 md:flex">
@@ -87,17 +92,17 @@ export function Navbar() {
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      'relative rounded-lg px-4 py-2 text-sm font-medium transition-colors',
+                      'relative rounded-xl px-4 py-2 text-sm font-medium transition-colors',
                       isActive
-                        ? 'text-trust-700'
-                        : 'text-muted-foreground hover:text-trust-600'
+                        ? 'text-setu-700 font-semibold dark:text-setu-300'
+                        : 'text-muted-foreground hover:text-setu-600 dark:hover:text-setu-300'
                     )}
                   >
                     {item.label}
                     {isActive && (
                       <motion.div
                         layoutId="nav-active"
-                        className="absolute inset-0 -z-10 rounded-lg bg-trust-50"
+                        className="absolute inset-0 -z-10 rounded-xl bg-setu-50 dark:bg-setu-950/60"
                         transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                       />
                     )}
@@ -107,24 +112,26 @@ export function Navbar() {
             </nav>
 
             <div className="flex items-center gap-2">
-              {/* 6-Language Dropdown */}
+              {/* 7-Language Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="gap-1.5 font-medium">
-                    <Globe className="h-4 w-4 text-trust-600" />
-                    <span>{currentLang.nativeLabel}</span>
+                  <Button variant="ghost" size="sm" className="gap-1.5 font-medium rounded-xl hover:bg-setu-50 dark:hover:bg-setu-950/50">
+                    <Globe className="h-4 w-4 text-setu-600 dark:text-setu-400" />
+                    <span className="text-xs font-semibold">{currentLang.nativeLabel}</span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-40">
-                  <DropdownMenuLabel className="text-xs text-muted-foreground">Select Language</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
+                <DropdownMenuContent align="end" className="w-48 rounded-2xl p-1.5 shadow-xl border-setu-100 dark:border-neutral-800">
+                  <DropdownMenuLabel className="text-xs text-muted-foreground px-2 py-1 font-semibold uppercase tracking-wider">
+                    {t('Select Language', 'भाषा चुनें')}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator className="my-1" />
                   {SUPPORTED_LANGUAGES.map((lang) => (
                     <DropdownMenuItem
                       key={lang.code}
                       onClick={() => setLanguage(lang.code as Language)}
-                      className="flex items-center justify-between"
+                      className="flex items-center justify-between rounded-xl px-2.5 py-2 cursor-pointer text-xs"
                     >
-                      <span className="text-sm">{lang.nativeLabel} ({lang.label})</span>
+                      <span className="font-medium">{lang.nativeLabel} <span className="text-muted-foreground">({lang.label})</span></span>
                       {language === lang.code && <Check className="h-4 w-4 text-emerald-600" />}
                     </DropdownMenuItem>
                   ))}
@@ -136,33 +143,33 @@ export function Navbar() {
               {user ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="hidden items-center gap-2 rounded-xl border border-trust-100 bg-white/60 px-2 py-1 transition-all hover:bg-trust-50 md:flex">
+                    <button className="hidden items-center gap-2 rounded-xl border border-setu-100 bg-white/70 px-2.5 py-1 transition-all hover:bg-setu-50 dark:border-neutral-800 dark:bg-neutral-900 md:flex">
                       <Avatar className="h-7 w-7">
-                        <AvatarFallback className="bg-gradient-to-br from-trust-500 to-trust-700 text-xs text-white">
+                        <AvatarFallback className="bg-gradient-to-br from-setu-500 to-setu-700 text-xs font-bold text-white">
                           {initials}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-sm font-medium text-trust-800">
+                      <span className="text-sm font-semibold text-setu-900 dark:text-setu-100">
                         {userDisplayName}
                       </span>
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuLabel className="flex flex-col gap-0.5">
-                      <span className="text-sm font-semibold">{userDisplayName}</span>
+                  <DropdownMenuContent align="end" className="w-56 rounded-2xl p-1.5 shadow-xl">
+                    <DropdownMenuLabel className="flex flex-col gap-0.5 px-2 py-1.5">
+                      <span className="text-sm font-bold text-setu-950 dark:text-setu-50">{userDisplayName}</span>
                       <span className="text-xs font-normal text-muted-foreground">{user.email}</span>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => router.push('/dashboard')}>
-                      <UserIcon className="mr-2 h-4 w-4" />
+                    <DropdownMenuItem onClick={() => router.push('/dashboard')} className="rounded-xl cursor-pointer">
+                      <UserIcon className="mr-2 h-4 w-4 text-setu-600" />
                       {t('Dashboard', 'डैशबोर्ड')}
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => router.push('/settings')}>
-                      <ShieldCheck className="mr-2 h-4 w-4 text-trust-600" />
+                    <DropdownMenuItem onClick={() => router.push('/settings')} className="rounded-xl cursor-pointer">
+                      <ShieldCheck className="mr-2 h-4 w-4 text-setu-600" />
                       {t('Privacy & Data Settings', 'गोपनीयता और डेटा')}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+                    <DropdownMenuItem onClick={handleSignOut} className="text-destructive rounded-xl cursor-pointer">
                       <LogOut className="mr-2 h-4 w-4" />
                       {t('Sign Out', 'साइन आउट')}
                     </DropdownMenuItem>
@@ -171,12 +178,12 @@ export function Navbar() {
               ) : (
                 <div className="hidden items-center gap-2 md:flex">
                   <Link href="/login">
-                    <Button variant="ghost" size="sm">
+                    <Button variant="ghost" size="sm" className="rounded-xl">
                       {t('Sign In', 'साइन इन')}
                     </Button>
                   </Link>
                   <Link href="/signup">
-                    <Button size="sm" className="bg-trust-600 hover:bg-trust-700">
+                    <Button size="sm" className="rounded-xl bg-setu-600 hover:bg-setu-700 text-white font-semibold shadow-md shadow-setu-600/20">
                       {t('Sign Up', 'साइन अप')}
                     </Button>
                   </Link>
@@ -186,7 +193,7 @@ export function Navbar() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="md:hidden"
+                className="md:hidden rounded-xl"
                 onClick={() => setMobileOpen(!mobileOpen)}
               >
                 {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -201,7 +208,7 @@ export function Navbar() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="glass border-b border-white/40 md:hidden"
+              className="glass border-b border-white/40 md:hidden dark:bg-neutral-900"
             >
               <div className="flex flex-col gap-1 px-4 py-3">
                 {navItems.map((item) => (
@@ -210,9 +217,9 @@ export function Navbar() {
                     href={item.href}
                     onClick={() => setMobileOpen(false)}
                     className={cn(
-                      'rounded-lg px-4 py-2.5 text-sm font-medium transition-colors',
+                      'rounded-xl px-4 py-2.5 text-sm font-medium transition-colors',
                       pathname === item.href
-                        ? 'bg-trust-50 text-trust-700'
+                        ? 'bg-setu-50 text-setu-700 font-semibold dark:bg-setu-950 dark:text-setu-300'
                         : 'text-muted-foreground hover:bg-muted'
                     )}
                   >
@@ -223,18 +230,18 @@ export function Navbar() {
                   <Link
                     href="/settings"
                     onClick={() => setMobileOpen(false)}
-                    className="rounded-lg px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted flex items-center gap-2"
+                    className="rounded-xl px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted flex items-center gap-2"
                   >
-                    <ShieldCheck className="h-4 w-4 text-trust-600" />
+                    <ShieldCheck className="h-4 w-4 text-setu-600" />
                     {t('Privacy & Settings', 'गोपनीयता और सेटिंग्स')}
                   </Link>
                 )}
-                <div className="flex flex-wrap gap-2 pt-2 border-t border-trust-100">
+                <div className="flex flex-wrap gap-2 pt-3 border-t border-setu-100 dark:border-neutral-800">
                   {SUPPORTED_LANGUAGES.map((lang) => (
                     <button
                       key={lang.code}
                       onClick={() => { setLanguage(lang.code as Language); setMobileOpen(false); }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${language === lang.code ? 'bg-trust-600 text-white' : 'bg-trust-50 text-trust-700'}`}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold ${language === lang.code ? 'bg-setu-600 text-white' : 'bg-setu-50 text-setu-700 dark:bg-neutral-800 dark:text-neutral-200'}`}
                     >
                       {lang.nativeLabel}
                     </button>

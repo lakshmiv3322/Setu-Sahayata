@@ -1,72 +1,56 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect } from 'react';
+import confetti from 'canvas-confetti';
 
-const colors = [
-  '#214884', '#2d6cdf', '#f97316', '#10b981', '#fbbf24',
-  '#3b82f6', '#22c55e', '#f59e0b', '#1e40af', '#f97316',
-];
-
-interface ConfettiPiece {
-  id: number;
-  left: number;
-  delay: number;
-  duration: number;
-  color: string;
-  size: number;
-  rotation: number;
+interface ConfettiProps {
+  active?: boolean;
 }
 
-export function Confetti({ trigger }: { trigger: boolean }) {
-  const [pieces, setPieces] = useState<ConfettiPiece[]>([]);
-
+export function Confetti({ active = true }: ConfettiProps) {
   useEffect(() => {
-    if (!trigger) return;
-    const newPieces: ConfettiPiece[] = Array.from({ length: 80 }, (_, i) => ({
-      id: i,
-      left: Math.random() * 100,
-      delay: Math.random() * 0.5,
-      duration: 2 + Math.random() * 2,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      size: 6 + Math.random() * 8,
-      rotation: Math.random() * 360,
-    }));
-    setPieces(newPieces);
-    const timer = setTimeout(() => setPieces([]), 5000);
-    return () => clearTimeout(timer);
-  }, [trigger]);
+    if (!active) return;
 
-  return (
-    <AnimatePresence>
-      {pieces.length > 0 && (
-        <motion.div
-          initial={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="pointer-events-none fixed inset-0 z-[100] overflow-hidden"
-        >
-          {pieces.map((piece) => (
-            <motion.div
-              key={piece.id}
-              initial={{ y: -50, opacity: 1, rotate: 0 }}
-              animate={{ y: '110vh', opacity: [1, 1, 0], rotate: piece.rotation + 720 }}
-              transition={{
-                duration: piece.duration,
-                delay: piece.delay,
-                ease: 'easeIn',
-              }}
-              style={{
-                left: `${piece.left}%`,
-                position: 'absolute',
-                width: piece.size,
-                height: piece.size,
-                backgroundColor: piece.color,
-                borderRadius: piece.id % 2 === 0 ? '50%' : '2px',
-              }}
-            />
-          ))}
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
+    // Palette particles: Saffron (#F2994A), Deep Teal (#0F4C5C), Emerald Green (#10B981), Amber (#F59E0B)
+    const colors = ['#F2994A', '#0F4C5C', '#10B981', '#F59E0B', '#1B6B7A', '#E8871E'];
+
+    const count = 200;
+    const defaults = {
+      origin: { y: 0.7 },
+      colors,
+    };
+
+    function fire(particleRatio: number, opts: confetti.Options) {
+      confetti({
+        ...defaults,
+        ...opts,
+        particleCount: Math.floor(count * particleRatio),
+      });
+    }
+
+    fire(0.25, {
+      spread: 26,
+      startVelocity: 55,
+    });
+    fire(0.2, {
+      spread: 60,
+    });
+    fire(0.35, {
+      spread: 100,
+      decay: 0.91,
+      scalar: 0.8,
+    });
+    fire(0.1, {
+      spread: 120,
+      startVelocity: 25,
+      decay: 0.92,
+      scalar: 1.2,
+    });
+    fire(0.1, {
+      spread: 120,
+      startVelocity: 45,
+    });
+  }, [active]);
+
+  return null;
 }

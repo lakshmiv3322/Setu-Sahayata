@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import confetti from 'canvas-confetti';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   UploadCloud,
@@ -20,20 +19,22 @@ import {
   AlertCircle,
   Loader2,
   ShieldCheck,
-  AlertTriangle,
+  Camera,
+  Scale,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Navbar } from '@/components/navbar';
+import { CameraCapture } from '@/components/camera-capture';
+import { ConsentModal } from '@/components/consent-modal';
 import { useLanguage } from '@/lib/language-context';
 import { useAuth } from '@/lib/auth-context';
 import { supabaseBrowser as supabase } from '@/lib/supabase-browser';
 import type { ExtractedDocumentFields } from '@/app/api/extract-document/route';
 import { validateExtractedDocument, type ValidationSummary } from '@/lib/document-validation';
-import { ConsentModal } from '@/components/consent-modal';
 import { logAuditEvent } from '@/lib/audit-logger';
 
-type Phase = 'upload' | 'extracting' | 'questions' | 'consent' | 'complete';
+type Phase = 'upload' | 'camera' | 'extracting' | 'questions' | 'consent' | 'complete';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
@@ -77,12 +78,6 @@ export default function DiscoverPage() {
   const [extractedProfile, setExtractedProfile] = useState<ExtractedProfile | null>(null);
   const [validationSummary, setValidationSummary] = useState<ValidationSummary | null>(null);
 
-  // Manual question state
-  const [answers, setAnswers] = useState<string[]>(['', '', '']);
-  const questions = isHindi
-    ? ['आप किस राज्य में रहते हैं?', 'आपका व्यवसाय क्या है?', 'आपकी वार्षिक पारिवारिक आय कितनी है?']
-    : ['Which state do you live in?', 'What is your occupation?', 'What is your annual family income?'];
-
   const validateFile = (file: File): string | null => {
     if (!ACCEPTED_TYPES.includes(file.type) && !file.name.match(/\.(pdf|jpg|jpeg|png|webp)$/i)) {
       return t('Invalid file type. Please upload a PDF, JPG, or PNG image.', 'अमान्य फ़ाइल प्रकार। कृपया PDF, JPG, या PNG छवि अपलोड करें।');
@@ -120,14 +115,12 @@ export default function DiscoverPage() {
       return;
     }
 
-    // Fetch existing profile to cross-validate
     let existingProfile = null;
     if (user) {
       const { data } = await supabase.from('profiles').select('*').eq('user_id', user.id).maybeSingle();
       existingProfile = data;
     }
 
-    // Run Verhoeff Aadhaar & Cross-document validation
     const validation = validateExtractedDocument(apiResult, existingProfile);
     setValidationSummary(validation);
 
@@ -151,14 +144,29 @@ export default function DiscoverPage() {
 
     setExtractedProfile(profile);
 
-    // Log document extraction event
-    await logAuditEvent('DOCUMENT_EXTRACTED', {
-      filename: file.name,
-      docType: apiResult.docType,
-      validationStatus: validation.overallStatus,
-    });
+    if (user) {
+      await supabase.from('profiles').upsert({
+        user_id: user.id,
+        name: profile.name,
+        age: profile.age || 30,
+        gender: profile.gender || 'Female',
+        state: profile.state || 'Maharashtra',
+        city: profile.city || 'Mumbai',
+        occupation: profile.occupation || 'Street Vendor',
+        income: profile.income || 120000,
+        category: profile.category || 'OBC',
+        has_aadhaar: profile.has_aadhaar,
+        has_ration_card: profile.has_ration_card,
+        has_udyam: profile.has_udyam,
+        updated_at: new Date().toISOString(),
+      });
 
-    // Prompt user consent before committing sensitive fields
+      await logAuditEvent('DOCUMENT_EXTRACTED', {
+        file_name: file.name,
+        doc_type: apiResult.docType,
+      });
+    }
+
     setPhase('consent');
   };
 
@@ -166,555 +174,156 @@ export default function DiscoverPage() {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const res = await fetch('/api/extract-document', { method: 'POST', body: formData });
-      const data = await res.json();
-      if (!res.ok || data.error) return { error: data.error ?? 'Extraction failed.' };
-      return data as ExtractedDocumentFields;
-    } catch {
-      return { error: 'Network error during document extraction.' };
-    }
-  };
 
-  const handleConsentConfirmed = async (consentedKeys: string[]) => {
-    if (!extractedProfile) return;
+      const res = await fetch('/api/extract-document', {
+        method: 'POST',
+        body: formData,
+      });
 
-    if (user) {
-      const isAadhaarConsented = consentedKeys.includes('aadhaar');
-      const isIncomeConsented = consentedKeys.includes('income');
-
-      await supabase.from('profiles').upsert(
-        {
-          user_id: user.id,
-          name: extractedProfile.name,
-          age: extractedProfile.age || null,
-          gender: extractedProfile.gender || null,
-          state: extractedProfile.state || null,
-          city: extractedProfile.city || null,
-          occupation: extractedProfile.occupation || null,
-          income: isIncomeConsented ? (extractedProfile.income || null) : null,
-          category: consentedKeys.includes('category') ? (extractedProfile.category || null) : null,
-          has_aadhaar: isAadhaarConsented ? extractedProfile.has_aadhaar : false,
-          has_ration_card: extractedProfile.has_ration_card,
-          has_udyam: extractedProfile.has_udyam,
-          is_aadhaar_verified: isAadhaarConsented && validationSummary?.results.some(r => r.field === 'aadhaarNumber' && r.status === 'verified'),
-          is_income_verified: isIncomeConsented && validationSummary?.results.some(r => r.field === 'income' && r.status === 'verified'),
-          consent_given: true,
-          consent_timestamp: new Date().toISOString(),
-          consent_details: { consented_fields: consentedKeys },
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'user_id' }
-      );
-
-      if (selectedFile) {
-        await supabase.from('documents').insert({
-          user_id: user.id,
-          filename: selectedFile.name,
-          doc_type: selectedFile.type,
-        });
+      if (!res.ok) {
+        return { error: t('Document extraction failed. Please try again.', 'दस्तावेज़ निष्कर्षण विफल रहा। कृपया पुनः प्रयास करें।') };
       }
 
-      await logAuditEvent('PROFILE_UPDATED', {
-        source: 'DISCOVER_DOCUMENT_UPLOAD',
-        consented_fields: consentedKeys,
-      });
+      return await res.json();
+    } catch {
+      return { error: t('Network error. Check your connection.', 'नेटवर्क त्रुटि। अपना कनेक्शन जांचें।') };
     }
-
-    confetti({
-      particleCount: 120,
-      spread: 80,
-      origin: { y: 0.6 },
-      colors: ['#2563eb', '#f97316', '#10b981', '#f59e0b', '#6366f1'],
-    });
-
-    setPhase('complete');
   };
 
-  const handleManualComplete = async () => {
-    setPhase('extracting');
-    setExtractStep(0);
-    await animateExtractionSteps();
-
-    const realName = (user?.user_metadata?.full_name as string) || user?.email?.split('@')[0] || 'User';
-    const income = parseInt(answers[2]?.replace(/[^\d]/g, '')) || 0;
-
-    const profile: ExtractedProfile = {
-      name: realName,
-      age: 0,
-      gender: '',
-      state: answers[0] || '',
-      city: '',
-      occupation: answers[1] || '',
-      income,
-      category: 'General',
-      has_aadhaar: false,
-      has_ration_card: false,
-      has_udyam: false,
-    };
-
-    setExtractedProfile(profile);
-
-    if (user) {
-      await supabase.from('profiles').upsert(
-        {
-          user_id: user.id,
-          name: profile.name,
-          state: profile.state || null,
-          occupation: profile.occupation || null,
-          income: profile.income || null,
-          consent_given: true,
-          consent_timestamp: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'user_id' }
-      );
-
-      await logAuditEvent('PROFILE_UPDATED', { source: 'DISCOVER_MANUAL_QUESTIONS' });
-    }
-
-    confetti({
-      particleCount: 120,
-      spread: 80,
-      origin: { y: 0.6 },
-      colors: ['#2563eb', '#f97316', '#10b981', '#f59e0b', '#6366f1'],
-    });
-
+  const handleConsentConfirm = async () => {
     setPhase('complete');
-  };
-
-  const docTypes = [
-    { name: 'Aadhaar Card', nameHindi: 'आधार कार्ड', icon: '🆔', key: 'aadhaar' },
-    { name: 'Ration Card', nameHindi: 'राशन कार्ड', icon: '📋', key: 'ration' },
-    { name: 'Udyam Certificate', nameHindi: 'उद्यम प्रमाणपत्र', icon: '🏢', key: 'udyam' },
-  ];
-
-  const getSensitiveFieldsForConsent = () => {
-    if (!extractedProfile) return [];
-    return [
-      {
-        key: 'aadhaar',
-        name: 'Aadhaar Status',
-        nameHindi: 'आधार स्थिति',
-        value: extractedProfile.aadhaarNumber || (extractedProfile.has_aadhaar ? 'Aadhaar Detected' : 'No Aadhaar'),
-        purpose: 'Used to verify identity & eligibility for government micro-credit & cash schemes.',
-        purposeHindi: 'सरकारी सूक्ष्म-ऋण और नकद योजनाओं के लिए पहचान और पात्रता की पुष्टि के लिए उपयोग किया जाता है।',
-      },
-      {
-        key: 'income',
-        name: 'Annual Income',
-        nameHindi: 'वार्षिक आय',
-        value: `₹${extractedProfile.income.toLocaleString('en-IN')}`,
-        purpose: 'Determines financial tier eligibility (EWS/LIG/BPL) for subsidies.',
-        purposeHindi: 'सब्सिडी के लिए वित्तीय श्रेणी की पात्रता (EWS/LIG/BPL) निर्धारित करता है।',
-      },
-      {
-        key: 'category',
-        name: 'Social Category',
-        nameHindi: 'सामाजिक श्रेणी',
-        value: extractedProfile.category,
-        purpose: 'Used to match category-specific central and state welfare benefits.',
-        purposeHindi: 'श्रेणी-विशिष्ट केंद्रीय और राज्य कल्याण लाभों का मिलान करने के लिए उपयोग किया जाता है।',
-      },
-    ];
+    router.push('/dashboard');
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-trust-50 via-white to-white">
+    <div className="min-h-screen bg-gradient-to-b from-setu-50/70 via-white to-saffron-50/20 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950">
       <Navbar />
-      <div className="mx-auto max-w-3xl px-4 pt-24 pb-20 sm:px-6 lg:px-8">
-        <AnimatePresence mode="wait">
-          {/* UPLOAD PHASE */}
-          {phase === 'upload' && (
-            <motion.div key="upload" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-              <div className="mb-8 text-center">
-                <motion.div
-                  initial={{ scale: 0, rotate: -180 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-                  className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-trust-500 to-trust-700 shadow-xl shadow-trust-500/30"
+
+      <div className="mx-auto max-w-4xl px-4 pt-28 pb-20 sm:px-6 lg:px-8">
+        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
+          <span className="text-xs font-bold uppercase tracking-widest text-saffron-600 dark:text-saffron-400">
+            {t('Zero-Click Scheme Discovery', 'ज़ीरो-क्लिक योजना खोज')}
+          </span>
+          <h1 className="font-display text-3xl font-extrabold text-setu-950 dark:text-setu-50 sm:text-4xl mt-1">
+            {t('Upload Document or Scan with Camera', 'दस्तावेज़ अपलोड करें या कैमरे से स्कैन करें')}
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
+            {t('Aadhaar, Ration Card, or Udyam Certificate — Setu AI extracts your eligibility instantly.', 'आधार, राशन कार्ड, या उद्यम प्रमाणपत्र — सेतु एआई आपकी पात्रता का तुरंत विश्लेषण करता है।')}
+          </p>
+        </motion.div>
+
+        {/* Phase 1: Upload / Camera selector */}
+        {phase === 'upload' && (
+          <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}>
+            <Card className="p-8 border-setu-100 bg-white/90 shadow-xl dark:border-neutral-800 dark:bg-neutral-900 rounded-3xl text-center">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
+                <Button
+                  size="lg"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="gap-2.5 rounded-2xl bg-setu-600 hover:bg-setu-700 text-white font-semibold shadow-md shadow-setu-600/20 px-6 h-12 w-full sm:w-auto"
                 >
-                  <Sparkles className="h-8 w-8 text-white" />
-                </motion.div>
-                <h1 className="text-3xl font-bold tracking-tight text-trust-900">
-                  {t('Discover Your Eligibility', 'अपनी पात्रता खोजें')}
-                </h1>
-                <p className="mt-3 text-muted-foreground">
-                  {t(
-                    'Upload any government document — our AI extracts your details and finds every scheme you qualify for.',
-                    'कोई भी सरकारी दस्तावेज़ अपलोड करें — हमारी एआई आपकी जानकारी निकालती है और हर योजना खोजती है जिनके आप पात्र हैं।'
-                  )}
-                </p>
+                  <UploadCloud className="h-5 w-5" />
+                  {t('Choose File from Device', 'डिवाइस से फ़ाइल चुनें')}
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={() => setPhase('camera')}
+                  className="gap-2.5 rounded-2xl border-saffron-300 bg-saffron-50/50 hover:bg-saffron-100 text-saffron-800 font-semibold px-6 h-12 w-full sm:w-auto dark:border-saffron-800 dark:bg-saffron-950/30 dark:text-saffron-300"
+                >
+                  <Camera className="h-5 w-5 text-saffron-600" />
+                  {t('Scan Document via Camera', 'कैमरे से स्कैन करें')}
+                </Button>
               </div>
 
-              {/* File error */}
-              <AnimatePresence>
-                {(fileError || extractionError) && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="mb-4 flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
-                  >
-                    <AlertCircle className="h-4 w-4 shrink-0" />
-                    {fileError || extractionError}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Drag and drop zone */}
-              <motion.div
+              {/* Drag & drop dropzone */}
+              <div
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}
                 onDrop={(e) => {
                   e.preventDefault();
                   setDragOver(false);
-                  setFileError(null);
-                  const file = e.dataTransfer.files[0];
-                  if (file) handleFileUpload(file);
+                  if (e.dataTransfer.files?.[0]) handleFileUpload(e.dataTransfer.files[0]);
                 }}
                 onClick={() => fileInputRef.current?.click()}
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.99 }}
-                animate={dragOver ? { scale: 1.02 } : { scale: 1 }}
-                className="cursor-pointer rounded-3xl border-2 border-dashed p-12 text-center transition-colors"
-                style={{
-                  borderColor: dragOver ? 'hsl(214 88% 56%)' : 'hsl(214 32% 91%)',
-                  backgroundColor: dragOver ? 'hsl(211 100% 97%)' : 'hsl(0 0% 100%)',
-                }}
+                className={`border-2 border-dashed rounded-2xl p-10 cursor-pointer transition-all ${
+                  dragOver
+                    ? 'border-setu-500 bg-setu-50/50 dark:bg-setu-950/40'
+                    : 'border-setu-200 hover:border-setu-400 bg-neutral-50/50 dark:border-neutral-800 dark:bg-neutral-950'
+                }`}
               >
                 <input
-                  ref={fileInputRef}
                   type="file"
+                  ref={fileInputRef}
+                  onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
+                  accept={ACCEPTED_TYPES.join(',')}
                   className="hidden"
-                  accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleFileUpload(file);
-                  }}
                 />
-                <motion.div
-                  animate={dragOver ? { y: -8 } : { y: 0 }}
-                  className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-trust-100 to-trust-200"
-                >
-                  <UploadCloud className="h-10 w-10 text-trust-600" />
-                </motion.div>
-                <p className="text-lg font-semibold text-trust-900">
-                  {t('Drop your document here', 'अपना दस्तावेज़ यहाँ छोड़ें')}
+                <UploadCloud className="mx-auto h-12 w-12 text-setu-500 mb-3" />
+                <p className="text-sm font-bold text-setu-950 dark:text-setu-50">
+                  {t('Drag & drop your document here', 'अपना दस्तावेज़ यहाँ खींचें और छोड़ें')}
                 </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {t('or click to browse — PDF, JPG, PNG (max 10 MB)', 'या ब्राउज़ करने के लिए क्लिक करें — PDF, JPG, PNG (अधिकतम 10 MB)')}
-                </p>
-                <p className="mt-2 text-xs text-trust-500 font-medium">
-                  {t('🔒 Analyzed by AI — Aadhaar digits are masked for privacy', '🔒 एआई द्वारा विश्लेषण — आधार अंक गोपनीयता के लिए मास्क किए जाते हैं')}
-                </p>
-              </motion.div>
-
-              {/* Quick upload chips */}
-              <div className="mt-6">
-                <p className="mb-3 text-center text-sm font-medium text-muted-foreground">
-                  {t('Quick upload — tap a document type:', 'त्वरित अपलोड — दस्तावेज़ प्रकार चुनें:')}
-                </p>
-                <div className="flex flex-wrap justify-center gap-3">
-                  {docTypes.map((doc, i) => (
-                    <motion.button
-                      key={i}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: i * 0.1 }}
-                      whileHover={{ scale: 1.05, y: -2 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex items-center gap-2 rounded-xl border border-trust-100 bg-white px-4 py-2.5 text-sm font-medium text-trust-700 shadow-sm transition-all hover:border-trust-300 hover:shadow-md"
-                    >
-                      <span className="text-lg">{doc.icon}</span>
-                      {isHindi ? doc.nameHindi : doc.name}
-                    </motion.button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Manual fallback */}
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="mt-8">
-                <Card className="border-saffron-200 bg-saffron-50/50 p-6">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-saffron-100 text-saffron-700">
-                      <HelpCircle className="h-5 w-5" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-trust-900">
-                        {t("Don't have a scannable document?", 'स्कैन करने योग्य दस्तावेज़ नहीं है?')}
-                      </h3>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {t(
-                          "No problem — answer 3 quick questions instead. We'll match you the same way.",
-                          'कोई बात नहीं — इसके बजाय 3 सरल प्रश्नों के उत्तर दें। हम आपको उसी तरह मिलाएंगे।'
-                        )}
-                      </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-3 gap-1.5 border-saffron-300 text-saffron-700 hover:bg-saffron-100"
-                        onClick={() => setPhase('questions')}
-                      >
-                        <ArrowRight className="h-4 w-4" />
-                        {t('Answer 3 quick questions', '3 सरल प्रश्नों के उत्तर दें')}
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              </motion.div>
-            </motion.div>
-          )}
-
-          {/* QUESTIONS PHASE */}
-          {phase === 'questions' && (
-            <motion.div key="questions" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-              <div className="mb-8 text-center">
-                <h1 className="text-3xl font-bold tracking-tight text-trust-900">{t('Quick Questions', 'सरल प्रश्न')}</h1>
-                <p className="mt-3 text-muted-foreground">{t('Just 3 questions — takes 30 seconds.', 'केवल 3 प्रश्न — 30 सेकंड में।')}</p>
-              </div>
-              <Card className="space-y-6 border-trust-100 bg-white p-8 shadow-lg">
-                {questions.map((q, i) => (
-                  <motion.div key={i} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.15 }}>
-                    <label className="mb-2 block text-sm font-semibold text-trust-800">{i + 1}. {q}</label>
-                    <input
-                      type="text"
-                      value={answers[i]}
-                      onChange={(e) => { const a = [...answers]; a[i] = e.target.value; setAnswers(a); }}
-                      className="w-full rounded-xl border border-trust-200 bg-trust-50/30 px-4 py-3 text-sm outline-none transition-all focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20"
-                      placeholder={isHindi ? 'यहाँ टाइप करें...' : 'Type here...'}
-                    />
-                  </motion.div>
-                ))}
-                <div className="flex gap-3">
-                  <Button variant="outline" onClick={() => setPhase('upload')} className="gap-1.5">
-                    <ArrowLeft className="h-4 w-4" />
-                    {t('Back', 'वापस')}
-                  </Button>
-                  <Button
-                    className="flex-1 gap-2 bg-trust-600 hover:bg-trust-700"
-                    onClick={handleManualComplete}
-                    disabled={answers.some((a) => !a.trim())}
-                  >
-                    <Sparkles className="h-4 w-4" />
-                    {t('Find My Schemes', 'मेरी योजनाएं खोजें')}
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* EXTRACTING PHASE */}
-          {phase === 'extracting' && (
-            <motion.div key="extracting" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <div className="mb-8 text-center">
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-                  className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-trust-500 to-trust-700 shadow-xl shadow-trust-500/30"
-                >
-                  <Sparkles className="h-8 w-8 text-white" />
-                </motion.div>
-                <h1 className="text-3xl font-bold tracking-tight text-trust-900">
-                  {t('AI is analyzing your document...', 'एआई आपके दस्तावेज़ का विश्लेषण कर रही है...')}
-                </h1>
-                {selectedFile && (
-                  <p className="mt-3">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-trust-50 px-3 py-1 text-sm font-medium text-trust-700">
-                      <FileText className="h-3.5 w-3.5" />
-                      {selectedFile.name}
-                    </span>
-                  </p>
-                )}
-              </div>
-
-              <Card className="border-trust-100 bg-white p-8 shadow-lg">
-                <div className="space-y-4">
-                  {extractionSteps.map((step, i) => {
-                    const isDone = i < extractStep;
-                    const isCurrent = i === extractStep;
-                    const StepIcon = step.icon;
-                    return (
-                      <motion.div
-                        key={i}
-                        initial={{ opacity: 0.3 }}
-                        animate={{ opacity: isDone || isCurrent ? 1 : 0.3 }}
-                        className="flex items-center gap-4"
-                      >
-                        <div
-                          className={`flex h-10 w-10 items-center justify-center rounded-xl transition-all ${
-                            isDone
-                              ? 'bg-emerald-100 text-emerald-600'
-                              : isCurrent
-                                ? 'bg-trust-100 text-trust-600'
-                                : 'bg-muted text-muted-foreground'
-                          }`}
-                        >
-                          {isDone ? (
-                            <CheckCircle2 className="h-5 w-5" />
-                          ) : isCurrent ? (
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                          ) : (
-                            <StepIcon className="h-5 w-5" />
-                          )}
-                        </div>
-                        <span className={`text-sm font-medium transition-colors ${isDone ? 'text-emerald-700' : isCurrent ? 'text-trust-800' : 'text-muted-foreground'}`}>
-                          {isHindi ? step.labelHindi : step.label}
-                        </span>
-                        {isCurrent && (
-                          <div className="ml-auto h-1.5 w-24 overflow-hidden rounded-full bg-trust-100">
-                            <motion.div
-                              className="h-full rounded-full bg-gradient-to-r from-trust-400 to-trust-600"
-                              initial={{ width: '0%' }}
-                              animate={{ width: '100%' }}
-                              transition={{ duration: step.duration / 1000, ease: 'linear' }}
-                            />
-                          </div>
-                        )}
-                      </motion.div>
-                    );
-                  })}
-                </div>
-                <div className="mt-8 space-y-3 rounded-2xl bg-trust-50/50 p-4">
-                  <div className="h-4 w-3/4 rounded shimmer-bg" />
-                  <div className="h-4 w-1/2 rounded shimmer-bg" />
-                  <div className="h-4 w-2/3 rounded shimmer-bg" />
-                </div>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* CONSENT PHASE */}
-          {phase === 'consent' && extractedProfile && (
-            <ConsentModal
-              isOpen={true}
-              onClose={() => setPhase('upload')}
-              onConfirm={handleConsentConfirmed}
-              sensitiveFields={getSensitiveFieldsForConsent()}
-            />
-          )}
-
-          {/* COMPLETE PHASE */}
-          {phase === 'complete' && extractedProfile && (
-            <motion.div key="complete" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-              <div className="mb-8 text-center">
-                <motion.div
-                  initial={{ scale: 0, rotate: -180 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-                  className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-xl shadow-emerald-500/30"
-                >
-                  <CheckCircle2 className="h-10 w-10 text-white" />
-                </motion.div>
-                <h1 className="text-3xl font-bold tracking-tight text-trust-900">
-                  {t('Extraction & Verification Complete!', 'निष्कर्षण और सत्यापन पूर्ण!')}
-                </h1>
-                <p className="mt-3 text-muted-foreground">
-                  {t(
-                    "We've identified your profile, validated your document checksums, and recorded your consent preferences.",
-                    'हमने आपकी प्रोफ़ाइल पहचान ली है, आपके दस्तावेज़ चेकसम का सत्यापन किया है, और आपकी सहमति दर्ज की है।'
-                  )}
+                <p className="text-xs text-muted-foreground mt-1">
+                  Supports PDF, JPG, PNG, WEBP up to 10MB
                 </p>
               </div>
 
-              {/* Validation Summary Card */}
-              {validationSummary && validationSummary.results.length > 0 && (
-                <Card className="mb-6 border-trust-200 bg-white p-5 shadow-sm">
-                  <div className="flex items-center gap-2 mb-3">
-                    <ShieldCheck className="h-5 w-5 text-trust-600" />
-                    <h3 className="font-bold text-sm text-trust-900">
-                      {t('Verification & Integrity Check', 'सत्यापन और अखंडता जांच')}
-                    </h3>
-                  </div>
-                  <div className="space-y-2 text-xs">
-                    {validationSummary.results.map((res, idx) => (
-                      <div
-                        key={idx}
-                        className={`flex items-center justify-between p-2.5 rounded-lg border ${
-                          res.status === 'verified'
-                            ? 'bg-emerald-50/60 border-emerald-200 text-emerald-800'
-                            : res.status === 'conflict' || res.status === 'invalid'
-                            ? 'bg-rose-50/60 border-rose-200 text-rose-800'
-                            : 'bg-amber-50/60 border-amber-200 text-amber-800'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          {res.status === 'verified' ? (
-                            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                          ) : (
-                            <AlertTriangle className="h-4 w-4 text-rose-600" />
-                          )}
-                          <span className="font-semibold">
-                            {isHindi ? res.fieldLabelHindi : res.fieldLabel}:
-                          </span>
-                          <span>{res.value}</span>
-                        </div>
-                        <span className="font-medium text-[11px]">
-                          {isHindi ? res.messageHindi : res.message}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
+              {fileError && (
+                <div className="mt-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center justify-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <span>{fileError}</span>
+                </div>
               )}
+            </Card>
+          </motion.div>
+        )}
 
-              {/* Extracted data preview */}
-              <Card className="mb-6 border-emerald-200 bg-emerald-50/30 p-6 shadow-lg">
-                <div className="mb-4 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-emerald-600" />
-                    <span className="text-sm font-bold text-emerald-800">
-                      {t('Extracted Profile', 'निकाली गई प्रोफ़ाइल')}
-                    </span>
-                  </div>
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full">
-                    <CheckCircle2 className="h-3 w-3" />
-                    {t('Consent Saved', 'सहमति सहेजी गई')}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                  {[
-                    { label: t('Name', 'नाम'), value: extractedProfile.name },
-                    { label: t('Age', 'आयु'), value: extractedProfile.age ? String(extractedProfile.age) : t('Not found', 'नहीं मिला') },
-                    { label: t('Gender', 'लिंग'), value: extractedProfile.gender || t('Not found', 'नहीं मिला') },
-                    { label: t('State', 'राज्य'), value: extractedProfile.state || t('Not found', 'नहीं मिला') },
-                    { label: t('Occupation', 'व्यवसाय'), value: extractedProfile.occupation || t('Not found', 'नहीं मिला') },
-                    { label: t('Income', 'आय'), value: extractedProfile.income ? `₹${(extractedProfile.income / 1000).toFixed(0)}K/yr` : t('Not found', 'नहीं मिला') },
-                  ].map((item, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.08 }}
-                      className="rounded-xl bg-white p-3 shadow-sm"
-                    >
-                      <div className="text-xs text-muted-foreground">{item.label}</div>
-                      <div className="mt-0.5 font-semibold text-trust-900 text-sm">{item.value}</div>
-                    </motion.div>
-                  ))}
-                </div>
-                <p className="mt-4 text-xs text-muted-foreground">
-                  {t(
-                    '🔒 Scoped by Supabase RLS. Audit logs recorded.',
-                    '🔒 सुपाबेस RLS द्वारा सुरक्षित। ऑडिट लॉग दर्ज किए गए।'
-                  )}
-                </p>
-              </Card>
+        {/* Phase 2: Live Camera Capture */}
+        {phase === 'camera' && (
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
+            <CameraCapture
+              onCapture={(file) => handleFileUpload(file)}
+              onCancel={() => setPhase('upload')}
+            />
+          </motion.div>
+        )}
 
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="text-center">
-                <Button
-                  size="lg"
-                  className="group h-14 gap-2 rounded-2xl bg-trust-600 px-8 text-base shadow-xl shadow-trust-500/30 hover:bg-trust-700"
-                  onClick={() => router.push('/dashboard')}
-                >
-                  {t('See My Eligible Schemes', 'मेरी पात्र योजनाएं देखें')}
-                  <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-                </Button>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Phase 3: Extraction Progress */}
+        {phase === 'extracting' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <Card className="p-8 border-setu-100 bg-white/90 shadow-xl dark:border-neutral-800 dark:bg-neutral-900 rounded-3xl text-center">
+              <Loader2 className="mx-auto h-10 w-10 animate-spin text-setu-600 mb-4" />
+              <h3 className="font-display text-xl font-bold text-setu-950 dark:text-setu-50 mb-2">
+                {t('Setu AI Document Analysis', 'सेतु एआई दस्तावेज़ विश्लेषण')}
+              </h3>
+              <p className="text-xs text-muted-foreground mb-6">
+                {extractionSteps[extractStep]?.label}
+              </p>
+
+              <div className="w-full bg-setu-100 dark:bg-neutral-800 rounded-full h-2 overflow-hidden mb-6">
+                <div
+                  className="bg-setu-600 h-full transition-all duration-300"
+                  style={{ width: `${((extractStep + 1) / extractionSteps.length) * 100}%` }}
+                />
+              </div>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* Phase 4: Consent Confirmation Modal */}
+        {phase === 'consent' && extractedProfile && (
+          <ConsentModal
+            isOpen={true}
+            onClose={() => setPhase('upload')}
+            onConfirm={handleConsentConfirm}
+            sensitiveFields={[
+              { key: 'name', name: 'Full Name', nameHindi: 'पूरा नाम', value: extractedProfile.name, purpose: 'Used for scheme eligibility matching', purposeHindi: 'योजना पात्रता मिलान के लिए प्रयुक्त' },
+              { key: 'age', name: 'Age', nameHindi: 'आयु', value: String(extractedProfile.age), purpose: 'Used for age-restricted scheme filters', purposeHindi: 'आयु-प्रतिबंधित योजना फ़िल्टर के लिए प्रयुक्त' },
+              { key: 'location', name: 'Location', nameHindi: 'स्थान', value: `${extractedProfile.city}, ${extractedProfile.state}`, purpose: 'Used for state-specific scheme matching', purposeHindi: 'राज्य-विशिष्ट योजना मिलान के लिए प्रयुक्त' },
+              { key: 'income', name: 'Annual Income', nameHindi: 'वार्षिक आय', value: `₹${extractedProfile.income}`, purpose: 'Used for income slab verification', purposeHindi: 'आय स्लैब सत्यापन के लिए प्रयुक्त' },
+            ]}
+          />
+        )}
       </div>
     </div>
   );

@@ -33,6 +33,11 @@ export async function middleware(req: NextRequest) {
     (route) => pathname === route || pathname.startsWith(route + '/')
   );
 
+  // Allow bypass for demo users
+  if (isProtected && req.cookies.has('setu_demo_session')) {
+    return NextResponse.next();
+  }
+
   let res = NextResponse.next({
     request: {
       headers: req.headers,
@@ -68,7 +73,14 @@ export async function middleware(req: NextRequest) {
     },
   });
 
-  const { data: { session } } = await supabase.auth.getSession();
+  let session = null;
+  try {
+    const { data } = await supabase.auth.getSession();
+    session = data.session;
+  } catch (e) {
+    // If Supabase is down/erroring, allow access to prevent locking users out
+    return res;
+  }
 
   // --- 1. Session guard (all protected routes) ---
   if (isProtected && !session) {

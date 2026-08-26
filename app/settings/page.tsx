@@ -143,8 +143,7 @@ export default function SettingsPage() {
 
     const updated = [...familyMembers, newMember];
     await saveFamilyMembers(updated);
-    
-    // reset form
+
     setNewMemberName('');
     setNewMemberAge('');
     setNewMemberGender('Female');
@@ -167,12 +166,10 @@ export default function SettingsPage() {
     setDeleting(true);
 
     try {
-      // 1. Log final audit entry before purge
       await logAuditEvent('ACCOUNT_DELETED', {
         reason: 'USER_REQUESTED_PURGE',
       });
 
-      // 2. Cascade delete user data across all tables
       await Promise.all([
         supabase.from('profiles').delete().eq('user_id', user.id),
         supabase.from('documents').delete().eq('user_id', user.id),
@@ -180,10 +177,7 @@ export default function SettingsPage() {
         supabase.from('audit_logs').delete().eq('user_id', user.id),
       ]);
 
-      // 3. Clear localStorage cache if any
       localStorage.clear();
-
-      // 4. Sign out & redirect home
       await signOut();
       router.push('/');
     } catch (err) {
@@ -194,25 +188,25 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-trust-50 via-white to-white">
+    <div className="min-h-screen bg-gradient-to-b from-setu-50/60 via-white to-saffron-50/20 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950">
       <Navbar />
 
       <div className="mx-auto max-w-4xl px-4 pt-24 pb-20 sm:px-6 lg:px-8">
         {/* Header */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <Button variant="ghost" size="sm" onClick={() => router.back()} className="mb-4 gap-1.5 text-muted-foreground">
+        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+          <Button variant="ghost" size="sm" onClick={() => router.back()} className="mb-4 gap-1.5 text-muted-foreground rounded-xl">
             <ArrowLeft className="h-4 w-4" />
             {t('Back', 'वापस')}
           </Button>
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-trust-500 to-trust-700 shadow-lg text-white">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-setu-500 to-setu-700 shadow-lg text-white">
               <ShieldCheck className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight text-trust-900">
+              <h1 className="font-display text-3xl font-extrabold text-setu-950 dark:text-setu-50">
                 {t('Privacy & Data Settings', 'गोपनीयता और डेटा सेटिंग्स')}
               </h1>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-0.5 text-xs text-muted-foreground">
                 {t('Manage your consent, view audit logs, or permanently delete your account data.', 'अपनी सहमति प्रबंधित करें, ऑडिट लॉग देखें, या अपना खाता डेटा स्थायी रूप से हटाएं।')}
               </p>
             </div>
@@ -221,22 +215,22 @@ export default function SettingsPage() {
 
         <div className="space-y-6">
           {/* Household & Family Members Card */}
-          <Card className="border-trust-100 bg-white p-6 shadow-md">
+          <Card className="border-setu-100 bg-white/90 p-6 shadow-md dark:border-neutral-800 dark:bg-neutral-900 rounded-3xl">
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2 text-trust-900 font-bold">
-                <Users className="h-5 w-5 text-trust-600" />
+              <div className="flex items-center gap-2 text-setu-950 dark:text-setu-50 font-bold">
+                <Users className="h-5 w-5 text-setu-600 dark:text-setu-400" />
                 <h2>{t('Household & Family Members', 'परिवार के सदस्य')}</h2>
               </div>
               <Button
                 onClick={() => setIsAddModalOpen(true)}
                 size="sm"
-                className="bg-trust-600 hover:bg-trust-700 text-white gap-1"
+                className="bg-setu-600 hover:bg-setu-700 text-white gap-1 rounded-xl text-xs font-semibold"
               >
                 <Plus className="h-4 w-4" />
                 {t('Add Member', 'सदस्य जोड़ें')}
               </Button>
             </div>
-            
+
             <p className="text-xs text-muted-foreground mb-4">
               {t(
                 'Add family members to check their eligibility for government welfare schemes.',
@@ -246,12 +240,12 @@ export default function SettingsPage() {
 
             {loadingProfile ? (
               <div className="flex justify-center p-4">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-trust-600"></div>
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-setu-600"></div>
               </div>
             ) : familyMembers.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {familyMembers.map((member) => (
-                  <div key={member.id} className="relative rounded-xl border border-trust-100 bg-trust-50/20 p-4 space-y-2 hover:shadow-sm transition-all">
+                  <div key={member.id} className="relative rounded-2xl border border-setu-100 bg-setu-50/40 p-4 space-y-2 hover:shadow-sm transition-all dark:border-neutral-800 dark:bg-neutral-950">
                     <button
                       onClick={() => handleDeleteMember(member.id)}
                       className="absolute right-3 top-3 text-muted-foreground hover:text-rose-600 transition-colors p-1"
@@ -260,12 +254,12 @@ export default function SettingsPage() {
                       <Trash2 className="h-4 w-4" />
                     </button>
                     <div>
-                      <h4 className="font-bold text-trust-900 text-sm">{member.name}</h4>
+                      <h4 className="font-bold text-setu-950 dark:text-setu-50 text-sm">{member.name}</h4>
                       <p className="text-xs text-muted-foreground">
                         {t(member.relation, member.relation)} • {member.age} {t('yrs', 'वर्ष')} • {t(member.gender, member.gender)}
                       </p>
                     </div>
-                    <div className="text-xs space-y-1 text-trust-800">
+                    <div className="text-xs space-y-1 text-setu-800 dark:text-setu-200">
                       <div>
                         <span className="text-muted-foreground">{t('Income:', 'आय:')}</span> ₹{member.income?.toLocaleString(isHindi ? 'hi-IN' : 'en-IN')}/yr
                       </div>
@@ -275,17 +269,17 @@ export default function SettingsPage() {
                     </div>
                     <div className="flex flex-wrap gap-1.5 pt-1">
                       {member.has_aadhaar && (
-                        <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] px-1.5 py-0.5">
+                        <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] px-1.5 py-0.5 dark:bg-emerald-950 dark:text-emerald-300">
                           {t('Aadhaar', 'आधार')}
                         </Badge>
                       )}
                       {member.has_ration_card && (
-                        <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] px-1.5 py-0.5">
+                        <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] px-1.5 py-0.5 dark:bg-emerald-950 dark:text-emerald-300">
                           {t('Ration', 'राशन')}
                         </Badge>
                       )}
                       {member.has_udyam && (
-                        <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] px-1.5 py-0.5">
+                        <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] px-1.5 py-0.5 dark:bg-emerald-950 dark:text-emerald-300">
                           {t('Udyam', 'उद्यम')}
                         </Badge>
                       )}
@@ -300,7 +294,7 @@ export default function SettingsPage() {
             )}
           </Card>
 
-          {/* Modal using Framer Motion */}
+          {/* Add Member Modal */}
           <AnimatePresence>
             {isAddModalOpen && (
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -308,15 +302,15 @@ export default function SettingsPage() {
                   initial={{ opacity: 0, scale: 0.95, y: 10 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                  className="w-full max-w-lg overflow-hidden rounded-2xl border border-trust-100 bg-white p-6 shadow-2xl space-y-4"
+                  className="w-full max-w-lg overflow-hidden rounded-3xl border border-setu-100 bg-white p-6 shadow-2xl space-y-4 dark:bg-neutral-900 dark:border-neutral-800"
                 >
-                  <div className="flex items-center justify-between border-b border-trust-50 pb-3">
-                    <h3 className="text-lg font-bold text-trust-900">
+                  <div className="flex items-center justify-between border-b border-setu-50 dark:border-neutral-800 pb-3">
+                    <h3 className="text-lg font-bold text-setu-950 dark:text-setu-50 font-display">
                       {t('Add Family Member', 'परिवार का सदस्य जोड़ें')}
                     </h3>
                     <button
                       onClick={() => setIsAddModalOpen(false)}
-                      className="rounded-lg p-1 text-muted-foreground hover:bg-trust-50 hover:text-trust-900 transition-all"
+                      className="rounded-lg p-1 text-muted-foreground hover:bg-setu-50 transition-all"
                     >
                       <X className="h-5 w-5" />
                     </button>
@@ -324,9 +318,8 @@ export default function SettingsPage() {
 
                   <form onSubmit={handleAddMember} className="space-y-4 text-sm">
                     <div className="grid grid-cols-2 gap-4">
-                      {/* Name */}
                       <div className="col-span-2">
-                        <label className="block text-xs font-semibold text-trust-800 mb-1">
+                        <label className="block text-xs font-semibold text-setu-900 dark:text-setu-200 mb-1">
                           {t('Full Name', 'पूरा नाम')}
                         </label>
                         <input
@@ -335,13 +328,12 @@ export default function SettingsPage() {
                           value={newMemberName}
                           onChange={(e) => setNewMemberName(e.target.value)}
                           placeholder={t('e.g. Ramesh Kumar', 'जैसे: रमेश कुमार')}
-                          className="w-full rounded-xl border border-trust-200 px-4 py-2.5 outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20"
+                          className="w-full rounded-xl border border-setu-200 bg-white px-3.5 py-2 text-sm outline-none focus:border-setu-500 dark:bg-neutral-950 dark:border-neutral-800"
                         />
                       </div>
 
-                      {/* Age */}
                       <div>
-                        <label className="block text-xs font-semibold text-trust-800 mb-1">
+                        <label className="block text-xs font-semibold text-setu-900 dark:text-setu-200 mb-1">
                           {t('Age', 'उम्र')}
                         </label>
                         <input
@@ -349,20 +341,19 @@ export default function SettingsPage() {
                           required
                           value={newMemberAge}
                           onChange={(e) => setNewMemberAge(e.target.value)}
-                          placeholder={t('e.g. 15', 'जैसे: 15')}
-                          className="w-full rounded-xl border border-trust-200 px-4 py-2.5 outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20"
+                          placeholder="15"
+                          className="w-full rounded-xl border border-setu-200 bg-white px-3.5 py-2 text-sm outline-none focus:border-setu-500 dark:bg-neutral-950 dark:border-neutral-800"
                         />
                       </div>
 
-                      {/* Gender */}
                       <div>
-                        <label className="block text-xs font-semibold text-trust-800 mb-1">
+                        <label className="block text-xs font-semibold text-setu-900 dark:text-setu-200 mb-1">
                           {t('Gender', 'लिंग')}
                         </label>
                         <select
                           value={newMemberGender}
                           onChange={(e) => setNewMemberGender(e.target.value)}
-                          className="w-full rounded-xl border border-trust-200 px-4 py-2.5 bg-white outline-none focus:border-trust-500"
+                          className="w-full rounded-xl border border-setu-200 bg-white px-3.5 py-2 text-sm outline-none focus:border-setu-500 dark:bg-neutral-950 dark:border-neutral-800"
                         >
                           <option value="Female">{t('Female', 'महिला')}</option>
                           <option value="Male">{t('Male', 'पुरुष')}</option>
@@ -370,15 +361,14 @@ export default function SettingsPage() {
                         </select>
                       </div>
 
-                      {/* Relation */}
                       <div>
-                        <label className="block text-xs font-semibold text-trust-800 mb-1">
+                        <label className="block text-xs font-semibold text-setu-900 dark:text-setu-200 mb-1">
                           {t('Relation', 'संबंध')}
                         </label>
                         <select
                           value={newMemberRelation}
                           onChange={(e) => setNewMemberRelation(e.target.value)}
-                          className="w-full rounded-xl border border-trust-200 px-4 py-2.5 bg-white outline-none focus:border-trust-500"
+                          className="w-full rounded-xl border border-setu-200 bg-white px-3.5 py-2 text-sm outline-none focus:border-setu-500 dark:bg-neutral-950 dark:border-neutral-800"
                         >
                           <option value="Spouse">{t('Spouse', 'जीवनसाथी')}</option>
                           <option value="Son">{t('Son', 'बेटा')}</option>
@@ -387,13 +377,11 @@ export default function SettingsPage() {
                           <option value="Father">{t('Father', 'पिता')}</option>
                           <option value="Brother">{t('Brother', 'भाई')}</option>
                           <option value="Sister">{t('Sister', 'बहन')}</option>
-                          <option value="Other">{t('Other', 'अन्य')}</option>
                         </select>
                       </div>
 
-                      {/* Income */}
                       <div>
-                        <label className="block text-xs font-semibold text-trust-800 mb-1">
+                        <label className="block text-xs font-semibold text-setu-900 dark:text-setu-200 mb-1">
                           {t('Annual Income (₹)', 'वार्षिक आय (₹)')}
                         </label>
                         <input
@@ -401,78 +389,17 @@ export default function SettingsPage() {
                           required
                           value={newMemberIncome}
                           onChange={(e) => setNewMemberIncome(e.target.value)}
-                          placeholder={t('e.g. 50000', 'जैसे: 50000')}
-                          className="w-full rounded-xl border border-trust-200 px-4 py-2.5 outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20"
-                        />
-                      </div>
-
-                      {/* Occupation */}
-                      <div className="col-span-2">
-                        <label className="block text-xs font-semibold text-trust-800 mb-1">
-                          {t('Occupation', 'व्यवसाय')}
-                        </label>
-                        <input
-                          type="text"
-                          value={newMemberOccupation}
-                          onChange={(e) => setNewMemberOccupation(e.target.value)}
-                          placeholder={t('e.g. Student, Tailor', 'जैसे: छात्र, दर्जी')}
-                          className="w-full rounded-xl border border-trust-200 px-4 py-2.5 outline-none focus:border-trust-500 focus:ring-2 focus:ring-trust-500/20"
+                          placeholder="50000"
+                          className="w-full rounded-xl border border-setu-200 bg-white px-3.5 py-2 text-sm outline-none focus:border-setu-500 dark:bg-neutral-950 dark:border-neutral-800"
                         />
                       </div>
                     </div>
 
-                    {/* Status switches (checkboxes) */}
-                    <div className="border-t border-trust-50 pt-3 space-y-2">
-                      <label className="block text-xs font-bold text-trust-900 uppercase tracking-wider mb-2">
-                        {t('Document / Registration Status', 'दस्तावेज़ / पंजीकरण स्थिति')}
-                      </label>
-                      <div className="grid grid-cols-3 gap-3">
-                        <label className="flex items-center gap-2 p-2.5 rounded-xl border border-trust-100 bg-trust-50/20 hover:bg-trust-50 transition-all cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={newMemberAadhaar}
-                            onChange={(e) => setNewMemberAadhaar(e.target.checked)}
-                            className="rounded border-trust-200 text-trust-600 focus:ring-trust-500 h-4 w-4"
-                          />
-                          <span className="text-xs font-medium text-trust-800">{t('Aadhaar', 'आधार')}</span>
-                        </label>
-
-                        <label className="flex items-center gap-2 p-2.5 rounded-xl border border-trust-100 bg-trust-50/20 hover:bg-trust-50 transition-all cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={newMemberRation}
-                            onChange={(e) => setNewMemberRation(e.target.checked)}
-                            className="rounded border-trust-200 text-trust-600 focus:ring-trust-500 h-4 w-4"
-                          />
-                          <span className="text-xs font-medium text-trust-800">{t('Ration', 'राशन')}</span>
-                        </label>
-
-                        <label className="flex items-center gap-2 p-2.5 rounded-xl border border-trust-100 bg-trust-50/20 hover:bg-trust-50 transition-all cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={newMemberUdyam}
-                            onChange={(e) => setNewMemberUdyam(e.target.checked)}
-                            className="rounded border-trust-200 text-trust-600 focus:ring-trust-500 h-4 w-4"
-                          />
-                          <span className="text-xs font-medium text-trust-800">{t('Udyam', 'उद्यम')}</span>
-                        </label>
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex gap-3 pt-3 border-t border-trust-50">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="flex-1"
-                        onClick={() => setIsAddModalOpen(false)}
-                      >
+                    <div className="flex gap-3 pt-3 border-t border-setu-50 dark:border-neutral-800">
+                      <Button type="button" variant="outline" className="flex-1 rounded-xl" onClick={() => setIsAddModalOpen(false)}>
                         {t('Cancel', 'रद्द करें')}
                       </Button>
-                      <Button
-                        type="submit"
-                        className="flex-1 bg-trust-600 hover:bg-trust-700 text-white"
-                      >
+                      <Button type="submit" className="flex-1 rounded-xl bg-setu-600 hover:bg-setu-700 text-white font-semibold">
                         {t('Add Member', 'सदस्य जोड़ें')}
                       </Button>
                     </div>
@@ -483,135 +410,70 @@ export default function SettingsPage() {
           </AnimatePresence>
 
           {/* Accessibility Mode Card */}
-          <Card className="border-trust-100 bg-white p-6 shadow-md">
-            <div className="flex items-center gap-2 mb-4 text-trust-900 font-bold">
-              <Eye className="h-5 w-5 text-trust-600" />
-              <h2>{t('Accessibility & Display', 'पहुँच और प्रदर्शन')}</h2>
+          <Card className="border-setu-100 bg-white/90 p-6 shadow-md dark:border-neutral-800 dark:bg-neutral-900 rounded-3xl">
+            <div className="flex items-center gap-2 mb-4 text-setu-950 dark:text-setu-50 font-bold">
+              <Eye className="h-5 w-5 text-setu-600 dark:text-setu-400" />
+              <h2>{t('Accessibility & Display Modes', 'सुलभता और प्रदर्शन मोड')}</h2>
             </div>
-            <p className="text-xs text-muted-foreground mb-4">
-              {t(
-                'Choose a display mode to improve readability based on your needs.',
-                'अपनी आवश्यकताओं के अनुसार पठनीयता सुधारने के लिए एक प्रदर्शन मोड चुनें।'
-              )}
-            </p>
             <AccessibilityModeSelector />
           </Card>
 
-          {/* Data Retention & Privacy Policy Card */}
-          <Card className="border-trust-100 bg-white p-6 shadow-md">
-            <div className="flex items-center gap-2 mb-3 text-trust-900 font-bold">
-              <Lock className="h-5 w-5 text-trust-600" />
-              <h2>{t('Data Retention & DPDP Rights', 'डेटा प्रतिधारण और डीपीडीपी अधिकार')}</h2>
-            </div>
-            <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
-              <p>
-                {t(
-                  'Setu Sahayata complies with the Digital Personal Data Protection (DPDP) Act. All personal attributes (Aadhaar status, income, occupation) are encrypted at rest and scoped strictly to your authenticated session using Row-Level Security (RLS).',
-                  'सेतु सहायता डिजिटल व्यक्तिगत डेटा संरक्षण (DPDP) अधिनियम का अनुपालन करती है। सभी व्यक्तिगत जानकारी रो-लेवल सिक्योरिटी (RLS) का उपयोग करके एन्क्रिप्ट की जाती हैं।'
-                )}
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                <div className="rounded-xl bg-trust-50/50 p-3 border border-trust-100 text-xs">
-                  <span className="font-semibold text-trust-900 block mb-1">🔒 {t('Storage Scope', 'भंडारण का दायरा')}</span>
-                  {t('Stored exclusively under your user ID. Never sold or shared with commercial entities.', 'केवल आपकी यूज़र आईडी के तहत सहेजा गया। कभी बेचा या साझा नहीं किया गया।')}
-                </div>
-                <div className="rounded-xl bg-trust-50/50 p-3 border border-trust-100 text-xs">
-                  <span className="font-semibold text-trust-900 block mb-1">🗑️ {t('Right to Erasure', 'मिटाने का अधिकार')}</span>
-                  {t('You can permanently delete your entire profile and application history anytime below.', 'आप नीचे कभी भी अपनी संपूर्ण प्रोफ़ाइल और आवेदन इतिहास को स्थायी रूप से हटा सकते हैं।')}
-                </div>
-              </div>
-            </div>
-          </Card>
-
           {/* Audit Logs Viewer */}
-          <Card className="border-trust-100 bg-white p-6 shadow-md">
-            <div className="flex items-center gap-2 mb-4 text-trust-900 font-bold">
-              <History className="h-5 w-5 text-trust-600" />
-              <h2>{t('Your Data Audit Log', 'आपका डेटा ऑडिट लॉग')}</h2>
+          <Card className="border-setu-100 bg-white/90 p-6 shadow-md dark:border-neutral-800 dark:bg-neutral-900 rounded-3xl">
+            <div className="flex items-center gap-2 mb-4 text-setu-950 dark:text-setu-50 font-bold">
+              <History className="h-5 w-5 text-setu-600 dark:text-setu-400" />
+              <h2>{t('Citizen Data Audit Log', 'नागरिक डेटा ऑडिट लॉग')}</h2>
             </div>
-            <p className="text-xs text-muted-foreground mb-4">
-              {t('Immutable log of security & data access events associated with your account.', 'आपके खाते से जुड़े सुरक्षा और डेटा एक्सेस इवेंट का अपरिवर्तनीय लॉग।')}
-            </p>
-
             {auditLogs.length > 0 ? (
-              <div className="divide-y divide-trust-50 border border-trust-100 rounded-xl overflow-hidden text-xs">
+              <div className="divide-y divide-setu-50 dark:divide-neutral-800 border border-setu-100 dark:border-neutral-800 rounded-2xl overflow-hidden text-xs">
                 {auditLogs.map((log) => (
-                  <div key={log.id} className="flex items-center justify-between p-3 bg-white hover:bg-trust-50/30 transition-colors">
-                    <div className="flex items-center gap-2.5">
-                      <Badge variant="outline" className="bg-trust-50 text-trust-700 font-mono text-[10px]">
+                  <div key={log.id} className="flex items-center justify-between p-3.5 bg-white dark:bg-neutral-950">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="bg-setu-50 text-setu-700 dark:bg-setu-950 dark:text-setu-300 font-mono text-[10px]">
                         {log.action}
                       </Badge>
-                      <span className="text-trust-800 font-medium">
-                        {log.action === 'CONSENT_GRANTED'
-                          ? t('Granted explicit data consent', 'स्पष्ट डेटा सहमति दी')
-                          : log.action === 'PROFILE_UPDATED'
-                          ? t('Updated user profile', 'उपयोगकर्ता प्रोफ़ाइल अपडेट की')
-                          : log.action === 'DOCUMENT_EXTRACTED'
-                          ? t('Extracted document fields', 'दस्तावेज़ फ़ील्ड निकाले')
-                          : log.action}
-                      </span>
+                      <span className="text-setu-900 dark:text-setu-100 font-medium">{log.action}</span>
                     </div>
                     <span className="text-muted-foreground text-[11px]">
-                      {new Date(log.created_at).toLocaleString(isHindi ? 'hi-IN' : 'en-IN')}
+                      {new Date(log.created_at).toLocaleString()}
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-xs italic text-muted-foreground">{t('No audit events logged yet.', 'अभी तक कोई ऑडिट इवेंट लॉग नहीं हुआ है।')}</p>
+              <p className="text-xs text-muted-foreground italic">{t('No audit logs recorded yet.', 'अभी तक कोई ऑडिट लॉग दर्ज नहीं किया गया है।')}</p>
             )}
           </Card>
 
-          {/* Delete Account & Data Card */}
-          <Card className="border-rose-200 bg-rose-50/20 p-6 shadow-md">
-            <div className="flex items-center gap-2 mb-2 text-rose-900 font-bold">
+          {/* Delete Account Card */}
+          <Card className="border-rose-200 bg-rose-50/40 p-6 shadow-md dark:border-rose-950 dark:bg-rose-950/20 rounded-3xl">
+            <div className="flex items-center gap-2 mb-2 text-rose-900 dark:text-rose-200 font-bold">
               <UserX className="h-5 w-5 text-rose-600" />
               <h2>{t('Delete My Data & Account', 'मेरा डेटा और खाता हटाएं')}</h2>
             </div>
             <p className="text-xs text-muted-foreground mb-4">
-              {t(
-                'Permanently remove your profile, uploaded documents, submitted applications, and audit logs from our databases. This action cannot be undone.',
-                'हमारे डेटाबेस से अपनी प्रोफ़ाइल, अपलोड किए गए दस्तावेज़, जमा किए गए आवेदन और ऑडिट लॉग स्थायी रूप से हटाएं। यह कार्रवाई पूर्ववत नहीं की जा सकती।'
-              )}
+              {t('Permanently remove your profile and document vault data from our database.', 'हमारे डेटाबेस से अपनी प्रोफ़ाइल और दस्तावेज़ वॉल्ट डेटा को स्थायी रूप से हटाएं।')}
             </p>
 
             {isConfirmingDelete ? (
-              <div className="rounded-xl border border-rose-300 bg-rose-100/50 p-4 space-y-3">
-                <div className="flex items-center gap-2 text-sm font-semibold text-rose-900">
+              <div className="rounded-2xl border border-rose-300 bg-rose-100/50 p-4 space-y-3 dark:border-rose-900 dark:bg-rose-950/40">
+                <div className="flex items-center gap-2 text-xs font-semibold text-rose-900 dark:text-rose-200">
                   <AlertTriangle className="h-4 w-4 text-rose-600" />
-                  {t('Are you absolutely sure?', 'क्या आप पूरी तरह सुनिश्चित हैं?')}
+                  {t('Are you sure you want to permanently delete all your data?', 'क्या आप निश्चित रूप से अपना संपूर्ण डेटा मिटाना चाहते हैं?')}
                 </div>
-                <p className="text-xs text-rose-800">
-                  {t('All your saved documents and application tracking IDs will be purged immediately.', 'आपके सभी सहेजे गए दस्तावेज़ और आवेदन तुरंत मिटा दिए जाएंगे।')}
-                </p>
-                <div className="flex gap-2 pt-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsConfirmingDelete(false)}
-                    disabled={deleting}
-                  >
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setIsConfirmingDelete(false)} disabled={deleting} className="rounded-xl text-xs">
                     {t('Cancel', 'रद्द करें')}
                   </Button>
-                  <Button
-                    size="sm"
-                    className="bg-rose-600 hover:bg-rose-700 text-white gap-1.5"
-                    onClick={handleDeleteAllData}
-                    disabled={deleting}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    {deleting ? t('Purging Data...', 'डेटा मिटा रहा है...') : t('Confirm & Delete Everything', 'पुष्टि करें और सब कुछ हटाएं')}
+                  <Button size="sm" onClick={handleDeleteAllData} disabled={deleting} className="rounded-xl bg-rose-600 text-white text-xs font-semibold">
+                    {deleting ? t('Purging...', 'मिटाया जा रहा है...') : t('Confirm Purge Data', 'डेटा मिटाने की पुष्टि करें')}
                   </Button>
                 </div>
               </div>
             ) : (
-              <Button
-                variant="outline"
-                className="border-rose-300 text-rose-700 hover:bg-rose-100 hover:text-rose-800 gap-2"
-                onClick={() => setIsConfirmingDelete(true)}
-              >
-                <Trash2 className="h-4 w-4" />
-                {t('Delete My Account & Data', 'मेरा खाता और डेटा हटाएं')}
+              <Button size="sm" variant="outline" onClick={() => setIsConfirmingDelete(true)} className="rounded-xl border-rose-300 text-rose-700 hover:bg-rose-100 dark:border-rose-900 dark:text-rose-300 text-xs font-semibold">
+                <Trash2 className="h-4 w-4 mr-1.5" />
+                {t('Request Data Purge', 'डेटा मिटाने का अनुरोध करें')}
               </Button>
             )}
           </Card>
