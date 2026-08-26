@@ -81,6 +81,39 @@ export default function LoginPage() {
             {t('Sign in to continue to your dashboard', 'अपने डैशबोर्ड पर जाने के लिए साइन इन करें')}
           </p>
 
+          {/* Quick Jury / Demo Preset Login Buttons */}
+          <div className="mt-4 rounded-xl border border-trust-100 bg-trust-50/60 p-3 space-y-2">
+            <span className="text-[11px] font-bold text-trust-800 uppercase tracking-wider block text-center">
+              ⚡ {t('Instant Jury & Demo Sign-In', 'त्वरित जूरी और डेमो साइन-इन')}
+            </span>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setEmail('citizen.demo@setusahayata.in');
+                  setPassword('Citizen@123');
+                }}
+                className="text-xs bg-white border-trust-200 hover:bg-trust-100 text-trust-900"
+              >
+                👤 Citizen Account
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setEmail('admin.demo@setusahayata.in');
+                  setPassword('Admin@123');
+                }}
+                className="text-xs bg-white border-trust-200 hover:bg-trust-100 text-trust-900"
+              >
+                🛡️ Admin Account
+              </Button>
+            </div>
+          </div>
+
           {error && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}

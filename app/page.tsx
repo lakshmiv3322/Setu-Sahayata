@@ -22,6 +22,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Navbar } from '@/components/navbar';
+import { AccessibilityModeSelector } from '@/components/accessibility-mode-selector';
+import { CompetitiveAdvantage } from '@/components/competitive-advantage';
 import { useLanguage } from '@/lib/language-context';
 import { statTickerItems } from '@/lib/mock-data';
 
@@ -215,6 +217,9 @@ export default function LandingPage() {
           ))}
         </div>
       </section>
+
+      {/* Flagship Competitive Advantage vs MyScheme/UMANG/DigiLocker */}
+      <CompetitiveAdvantage />
 
       {/* Features */}
       <section ref={featuresRef} className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
