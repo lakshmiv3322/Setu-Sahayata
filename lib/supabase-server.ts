@@ -3,14 +3,8 @@ import { cookies } from 'next/headers';
 
 export function createSupabaseServerClient() {
   const cookieStore = cookies();
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error(
-      '[Setu Sahayata] Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY.'
-    );
-  }
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://gzhcmypgymyxevzhszlz.supabase.co';
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_z8reSTx6hAYl6fyuu4FVaA_vEReJAL7';
 
   return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
