@@ -1,5 +1,5 @@
 'use client';
-
+import { Suspense } from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -107,7 +107,7 @@ function transformDbScheme(record: any): Scheme {
   };
 }
 
-export default function DashboardPage() {
+function DashboardContent() {
   useRequireAuth();
   const { user } = useAuth();
   const { t, isHindi } = useLanguage();
@@ -616,5 +616,12 @@ export default function DashboardPage() {
         }}
       />
     </div>
+  );
+}
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={null}>
+      <DashboardContent />
+    </Suspense>
   );
 }

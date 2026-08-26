@@ -1,5 +1,5 @@
 'use client';
-
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { motion, useInView } from 'framer-motion';
 import { useRef, useState, useEffect } from 'react';
